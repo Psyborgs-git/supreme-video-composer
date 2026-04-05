@@ -14,6 +14,12 @@ interface PropsFormProps {
 export const PropsForm: React.FC<PropsFormProps> = ({ schema, values, onChange }) => {
   const fields = useMemo(() => extractFields(schema), [schema]);
 
+  if (fields.length === 0) {
+    return (
+      <p className="text-sm text-zinc-500 italic">No configurable properties for this template.</p>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4">
       {fields.map((field) => (

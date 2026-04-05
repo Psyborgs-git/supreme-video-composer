@@ -10,17 +10,19 @@ import { ExportPanel } from "@/components/ExportPanel";
 import type { AspectRatioPreset } from "@studio/shared-types";
 
 export const Editor: React.FC = () => {
-  const { templateId } = useParams<{ templateId: string }>();
+  const { templateId, projectId } = useParams<{ templateId: string; projectId?: string }>();
   const navigate = useNavigate();
   const playerRef = useRef<PlayerRef>(null);
 
   const {
     inputProps,
     aspectRatio,
+    initialized,
     setTemplateId,
     setInputProps,
     updateInputProp,
     setAspectRatio,
+    loadProject,
   } = useEditorStore();
 
   const template = useMemo(
@@ -28,15 +30,24 @@ export const Editor: React.FC = () => {
     [templateId],
   );
 
-  // Initialize editor state when template changes
   useEffect(() => {
     if (!template || !templateId) {
       navigate("/");
       return;
     }
-    setTemplateId(templateId);
-    setInputProps(template.manifest.defaultProps);
-  }, [templateId, template, navigate, setTemplateId, setInputProps]);
+
+    if (projectId) {
+      loadProject(projectId).catch(() => navigate("/projects"));
+    } else {
+      setTemplateId(templateId);
+      setInputProps(template.manifest.defaultProps);
+      const supported = template.manifest.supportedAspectRatios as AspectRatioPreset[];
+      if (!supported.includes(aspectRatio.preset)) {
+        setAspectRatio(supported[0]);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templateId, projectId]);
 
   if (!template) {
     return (
@@ -46,18 +57,15 @@ export const Editor: React.FC = () => {
     );
   }
 
-  // Don't render Player until props are initialized
-  if (Object.keys(inputProps).length === 0) {
+  if (!initialized) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-57px)] text-zinc-400">
-        Loading template...
+        Loading…
       </div>
     );
   }
 
   const { width, height } = aspectRatio;
-
-  // Responsive player sizing
   const maxPlayerWidth = 800;
   const playerScale = Math.min(1, maxPlayerWidth / width);
   const playerWidth = width * playerScale;
@@ -88,6 +96,7 @@ export const Editor: React.FC = () => {
             overflow: "hidden",
             boxShadow: "0 0 40px rgba(0,0,0,0.5)",
           }}
+          acknowledgeRemotionLicense
         />
       </div>
 

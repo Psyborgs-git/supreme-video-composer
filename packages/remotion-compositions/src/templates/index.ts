@@ -12,3 +12,6 @@ export type { SocialMediaReelProps } from "./SocialMediaReel";
 
 export { ProductShowcase, ProductShowcaseSchema } from "./ProductShowcase";
 export type { ProductShowcaseProps } from "./ProductShowcase";
+
+export { BabyLens, BabyLensSchema } from "./BabyLens";
+export type { BabyLensProps } from "./BabyLens";

@@ -4,6 +4,8 @@ export {
   getAllTemplates,
   getTemplateManifests,
   validateInputProps,
+  deleteTemplate,
+  updateTemplateManifest,
 } from "./registry";
 export type { RegisteredTemplate } from "./registry";
 

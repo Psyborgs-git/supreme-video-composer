@@ -11,6 +11,8 @@ import {
   SocialMediaReelSchema,
   ProductShowcase,
   ProductShowcaseSchema,
+  BabyLens,
+  BabyLensSchema,
 } from "@studio/remotion-compositions/templates";
 import type {
   HistoryStorylineProps,
@@ -18,6 +20,7 @@ import type {
   QuoteCardSequenceProps,
   SocialMediaReelProps,
   ProductShowcaseProps,
+  BabyLensProps,
 } from "@studio/remotion-compositions/templates";
 import { getAudioDurationInSeconds } from "@remotion/media-utils";
 
@@ -175,4 +178,26 @@ registerTemplate({
   },
   component: ProductShowcase,
   calculateMetadata: productCalculateMetadata,
+});
+
+// ─── BabyLens ────────────────────────────────────────────────────
+
+const babylensDefaults = BabyLensSchema.parse({});
+
+registerTemplate({
+  manifest: {
+    id: "babylens",
+    name: "BabyLens",
+    description: "Social reel for parenting apps with POV, product reveal, features, and CTA",
+    category: "social",
+    tags: ["social", "reel", "parenting", "app", "vertical"],
+    defaultDurationInFrames: 900,
+    defaultFps: 30,
+    supportedAspectRatios: ["9:16"],
+    propsSchema: BabyLensSchema,
+    defaultProps: babylensDefaults as unknown as Record<string, unknown>,
+    thumbnailFrame: 210,
+    compositionId: "BabyLens",
+  },
+  component: BabyLens,
 });

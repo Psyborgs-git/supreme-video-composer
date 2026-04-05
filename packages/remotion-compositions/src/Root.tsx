@@ -10,6 +10,8 @@ import {
   SocialMediaReelSchema,
   ProductShowcase,
   ProductShowcaseSchema,
+  BabyLens,
+  BabyLensSchema,
 } from "./templates";
 
 export const RemotionRoot: React.FC = () => {
@@ -64,6 +66,16 @@ export const RemotionRoot: React.FC = () => {
         height={1080}
         defaultProps={ProductShowcaseSchema.parse({})}
         schema={ProductShowcaseSchema}
+      />
+      <Composition
+        id="BabyLens"
+        component={BabyLens}
+        durationInFrames={900}
+        fps={30}
+        width={1080}
+        height={1920}
+        defaultProps={BabyLensSchema.parse({})}
+        schema={BabyLensSchema}
       />
     </>
   );

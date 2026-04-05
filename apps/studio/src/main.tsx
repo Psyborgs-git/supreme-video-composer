@@ -15,6 +15,7 @@ createRoot(document.getElementById("root")!).render(
         <Route element={<Layout />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/editor/:templateId" element={<Editor />} />
+          <Route path="/editor/:templateId/:projectId" element={<Editor />} />
           <Route path="/projects" element={<Projects />} />
           <Route path="/assets" element={<Assets />} />
         </Route>

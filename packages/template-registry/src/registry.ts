@@ -42,3 +42,21 @@ export function validateInputProps(
   }
   return { success: true, data: result.data as Record<string, unknown> };
 }
+
+export function deleteTemplate(id: string): boolean {
+  return registry.delete(id);
+}
+
+export function updateTemplateManifest(
+  id: string,
+  updates: Partial<Pick<TemplateManifest, "name" | "description" | "category" | "tags">>,
+): boolean {
+  const template = registry.get(id);
+  if (!template) return false;
+  registry.set(id, {
+    ...template,
+    manifest: { ...template.manifest, ...updates },
+  });
+  return true;
+}
+

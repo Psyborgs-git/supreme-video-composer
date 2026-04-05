@@ -7,12 +7,12 @@ import {
 } from "../index";
 
 // The registry is populated as a side-effect of importing from "@studio/template-registry"
-// (the templates.ts file registers all 5 templates)
+// (the templates.ts file registers all 6 templates)
 
 describe("Template Registry — template count", () => {
-  it("has exactly 5 registered templates", () => {
+  it("has exactly 6 registered templates", () => {
     const templates = getAllTemplates();
-    expect(templates).toHaveLength(5);
+    expect(templates).toHaveLength(6);
   });
 
   it("contains all expected template IDs", () => {
@@ -22,6 +22,7 @@ describe("Template Registry — template count", () => {
     expect(ids).toContain("quote-card-sequence");
     expect(ids).toContain("social-media-reel");
     expect(ids).toContain("product-showcase");
+    expect(ids).toContain("babylens");
   });
 });
 

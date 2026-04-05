@@ -6,6 +6,7 @@ import type {
   QualityPreset,
   RenderStatus,
   VideoCodec,
+  Project,
 } from "@studio/shared-types";
 import { ASPECT_RATIO_DIMENSIONS, QUALITY_CRF } from "@studio/shared-types";
 
@@ -15,6 +16,7 @@ interface EditorState {
   aspectRatio: AspectRatioConfig;
   qualityPreset: QualityPreset;
   exportFormat: ExportFormat;
+  initialized: boolean;
   // Render state
   projectId: string | null;
   renderJobId: string | null;
@@ -29,6 +31,7 @@ interface EditorState {
   setAspectRatio: (preset: AspectRatioPreset, custom?: { width: number; height: number }) => void;
   setQualityPreset: (preset: QualityPreset) => void;
   setCodec: (codec: VideoCodec) => void;
+  loadProject: (projectId: string) => Promise<void>;
   /** Save current editor state as a project on the backend and return the project id */
   saveProject: (name: string) => Promise<string>;
   /** Queue a render job for the current project */
@@ -50,6 +53,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     fps: 30,
     scale: 1,
   },
+  initialized: false,
   projectId: null,
   renderJobId: null,
   renderProgress: 0,
@@ -57,9 +61,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   renderOutputPath: null,
   renderError: null,
 
-  setTemplateId: (id) => set({ templateId: id }),
+  setTemplateId: (id) => set({ templateId: id, initialized: false, inputProps: {} }),
 
-  setInputProps: (props) => set({ inputProps: props }),
+  setInputProps: (props) => set({ inputProps: props, initialized: true }),
 
   updateInputProp: (key, value) =>
     set((state) => ({
@@ -98,6 +102,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }));
   },
 
+  loadProject: async (projectId: string) => {
+    const res = await fetch(`/api/projects/${projectId}`);
+    if (!res.ok) throw new Error("Project not found");
+    const project: Project = await res.json();
+    set({
+      templateId: project.templateId,
+      inputProps: project.inputProps,
+      aspectRatio: project.aspectRatio,
+      projectId: project.id,
+      initialized: true,
+    });
+  },
+
   saveProject: async (name: string) => {
     const { templateId, inputProps, aspectRatio } = get();
     if (!templateId) throw new Error("No template selected");
@@ -122,12 +139,16 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const res = await fetch(`/api/projects/${projectId}/render`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ codec: exportFormat.codec, quality: qualityPreset }),
+      body: JSON.stringify({
+        codec: exportFormat.codec,
+        quality: qualityPreset,
+        fps: exportFormat.fps,
+      }),
     });
     if (!res.ok) {
       const err = await res.text();
       set({ renderStatus: "error", renderError: err });
-      return;
+      throw new Error(err);
     }
     const job = await res.json();
     set({ renderJobId: job.id });
@@ -136,9 +157,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   pollRenderStatus: async () => {
     const { renderJobId } = get();
     if (!renderJobId) return;
+
     const res = await fetch(`/api/renders/${renderJobId}`);
     if (!res.ok) return;
     const job = await res.json();
+
     set({
       renderStatus: job.status,
       renderProgress: job.progress?.progress ?? 0,
@@ -148,5 +171,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   resetRender: () =>
-    set({ renderJobId: null, renderProgress: 0, renderStatus: null, renderOutputPath: null, renderError: null }),
+    set({
+      renderStatus: null,
+      renderProgress: 0,
+      renderJobId: null,
+      renderOutputPath: null,
+      renderError: null,
+    }),
 }));

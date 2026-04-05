@@ -1,5 +1,6 @@
 import { Player } from "@remotion/player";
 import type { RegisteredTemplate } from "@studio/template-registry";
+import { ASPECT_RATIO_DIMENSIONS } from "@studio/shared-types";
 
 interface TemplateThumbnailProps {
   template: RegisteredTemplate;
@@ -15,19 +16,22 @@ export const TemplateThumbnail: React.FC<TemplateThumbnailProps> = ({
 }) => {
   const { manifest, component } = template;
 
-  // @remotion/player v4: render a still by setting initialFrame + durationInFrames=manifest value
-  // and pausing at the thumbnail frame. The `inputProps` initialise with defaults.
+  const firstRatio = manifest.supportedAspectRatios[0];
+  const dims =
+    firstRatio && firstRatio !== "custom"
+      ? ASPECT_RATIO_DIMENSIONS[firstRatio as keyof typeof ASPECT_RATIO_DIMENSIONS]
+      : { width: 1920, height: 1080 };
+
   return (
     <Player
       component={component}
       durationInFrames={manifest.defaultDurationInFrames}
       fps={manifest.defaultFps}
-      compositionWidth={manifest.supportedAspectRatios.includes("16:9") ? 1920 : 1080}
-      compositionHeight={manifest.supportedAspectRatios.includes("16:9") ? 1080 : 1080}
+      compositionWidth={dims.width}
+      compositionHeight={dims.height}
       inputProps={manifest.defaultProps}
       initialFrame={manifest.thumbnailFrame}
       style={{ width, height, display: "block" }}
-      // No controls – this is a static thumbnail
       controls={false}
       loop={false}
       autoPlay={false}

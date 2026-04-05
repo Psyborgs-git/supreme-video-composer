@@ -94,7 +94,7 @@ export const Projects: React.FC = () => {
 
               <div className="flex items-center gap-2 shrink-0">
                 <button
-                  onClick={() => navigate(`/editor/${project.templateId}`)}
+                  onClick={() => navigate(`/editor/${project.templateId}/${project.id}`)}
                   className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm rounded-lg transition-colors"
                 >
                   Open
