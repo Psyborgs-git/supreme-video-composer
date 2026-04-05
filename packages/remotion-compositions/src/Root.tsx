@@ -1,0 +1,70 @@
+import { Composition } from "remotion";
+import {
+  HistoryStoryline,
+  HistoryStorylineSchema,
+  BeatSyncedVisualizer,
+  BeatSyncedVisualizerSchema,
+  QuoteCardSequence,
+  QuoteCardSequenceSchema,
+  SocialMediaReel,
+  SocialMediaReelSchema,
+  ProductShowcase,
+  ProductShowcaseSchema,
+} from "./templates";
+
+export const RemotionRoot: React.FC = () => {
+  return (
+    <>
+      <Composition
+        id="HistoryStoryline"
+        component={HistoryStoryline}
+        durationInFrames={510}
+        fps={30}
+        width={1920}
+        height={1080}
+        defaultProps={HistoryStorylineSchema.parse({})}
+        schema={HistoryStorylineSchema}
+      />
+      <Composition
+        id="BeatSyncedVisualizer"
+        component={BeatSyncedVisualizer}
+        durationInFrames={900}
+        fps={30}
+        width={1080}
+        height={1080}
+        defaultProps={BeatSyncedVisualizerSchema.parse({})}
+        schema={BeatSyncedVisualizerSchema}
+      />
+      <Composition
+        id="QuoteCardSequence"
+        component={QuoteCardSequence}
+        durationInFrames={360}
+        fps={30}
+        width={1080}
+        height={1080}
+        defaultProps={QuoteCardSequenceSchema.parse({})}
+        schema={QuoteCardSequenceSchema}
+      />
+      <Composition
+        id="SocialMediaReel"
+        component={SocialMediaReel}
+        durationInFrames={270}
+        fps={30}
+        width={1080}
+        height={1920}
+        defaultProps={SocialMediaReelSchema.parse({})}
+        schema={SocialMediaReelSchema}
+      />
+      <Composition
+        id="ProductShowcase"
+        component={ProductShowcase}
+        durationInFrames={240}
+        fps={30}
+        width={1080}
+        height={1080}
+        defaultProps={ProductShowcaseSchema.parse({})}
+        schema={ProductShowcaseSchema}
+      />
+    </>
+  );
+};
