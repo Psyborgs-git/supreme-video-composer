@@ -2,6 +2,9 @@
  * Hono HTTP backend for Media Studio — runs on port 3001 via `bun run server.ts`.
  * Vite dev server (port 3000) proxies /api/* requests here.
  *
+ * In production mode (NODE_ENV=production), also serves the built Vite
+ * static assets on port 3000 so a single container can host everything.
+ *
  * All route logic lives in `src/api.ts` (see createApp) so it can be tested
  * without starting an HTTP listener and without a real Remotion renderer.
  *
@@ -20,16 +23,22 @@
 
 import path from "node:path";
 import fs from "node:fs";
+import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
+import { serveStatic } from "@hono/node-server/serve-static";
 import { RenderQueue, executeRender } from "@studio/renderer";
 import { createApp } from "./src/api";
 
 // ─── Paths ────────────────────────────────────────────────────────────────────
 
-const STUDIO_DIR: string = import.meta.dir;
+// Compatible with both Bun (import.meta.dir) and Node.js (import.meta.dirname / fileURLToPath)
+const STUDIO_DIR: string =
+  (import.meta as any).dir ??
+  import.meta.dirname ??
+  path.dirname(fileURLToPath(import.meta.url));
 
 /** Rendered video files are written here. */
-const OUTPUT_DIR = path.join(STUDIO_DIR, "output");
+const OUTPUT_DIR = process.env.EXPORTS_DIR ?? path.join(STUDIO_DIR, "output");
 fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
 /**
@@ -54,14 +63,30 @@ renderQueue.setRenderFunction((job, onProgress) =>
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 
-const { app } = createApp(renderQueue, "http://localhost:3000");
+const isProduction = process.env.NODE_ENV === "production";
+const corsOrigin = isProduction ? "*" : "http://localhost:3000";
+const { app } = createApp(renderQueue, corsOrigin);
+
+// In production, serve the Vite-built static assets from the same Hono server
+if (isProduction) {
+  const distDir = path.join(STUDIO_DIR, "dist");
+  if (fs.existsSync(distDir)) {
+    app.use("/*", serveStatic({ root: "./dist", rewriteRequestPath: (p) => p }));
+    // Fallback: serve index.html for client-side routing (SPA)
+    app.get("*", (c) => {
+      const html = fs.readFileSync(path.join(distDir, "index.html"), "utf-8");
+      return c.html(html);
+    });
+  }
+}
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 
-const PORT = 3001;
+const PORT = isProduction ? Number(process.env.PORT ?? 3000) : 3001;
 
 const server = serve({ fetch: app.fetch, port: PORT }, () => {
   console.log(`[studio-api] listening on http://localhost:${PORT}`);
+  console.log(`[studio-api] mode: ${isProduction ? "production" : "development"}`);
   console.log(`[studio-api] compositions bundle: ${COMPOSITIONS_ENTRY}`);
   console.log(`[studio-api] render output: ${OUTPUT_DIR}`);
 });

@@ -6,21 +6,21 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "bun run --filter '@studio/app' dev",
-    "dev:all": "bun run build:types && bun run --filter '@studio/shared-types' dev & bun run --filter '@studio/renderer' dev & bun run --filter '@studio/app' dev & wait",
-    "dev:mcp": "bun run --filter '@studio/mcp-server' dev",
-    "build": "bun run --filter '@studio/shared-types' build && bun run --filter '@studio/renderer' build && bun run --filter '@studio/mcp-server' build && bun run --filter '@studio/app' build",
-    "build:types": "bun run --filter '@studio/shared-types' build",
-    "build:renderer": "bun run --filter '@studio/renderer' build",
-    "build:mcp": "bun run --filter '@studio/mcp-server' build",
-    "build:app": "bun run --filter '@studio/app' build",
-    "test": "bun run --filter '*' test",
-    "test:types": "bun run --filter '@studio/shared-types' test",
-    "test:registry": "bun run --filter '@studio/template-registry' test",
-    "test:renderer": "bun run --filter '@studio/renderer' test",
-    "test:mcp": "bun run --filter '@studio/mcp-server' test",
-    "studio": "bun run --filter '@studio/remotion-compositions' studio",
-    "type-check": "bun run --filter '*' type-check"
+    "dev": "npm run --workspace @studio/app dev",
+    "dev:all": "npm run build:types && npm run --workspace @studio/shared-types dev & npm run --workspace @studio/renderer dev & npm run --workspace @studio/app dev & wait",
+    "dev:mcp": "npm run --workspace @studio/mcp-server dev",
+    "build": "npm run --workspace @studio/shared-types build && npm run --workspace @studio/renderer build && npm run --workspace @studio/mcp-server build && npm run --workspace @studio/app build",
+    "build:types": "npm run --workspace @studio/shared-types build",
+    "build:renderer": "npm run --workspace @studio/renderer build",
+    "build:mcp": "npm run --workspace @studio/mcp-server build",
+    "build:app": "npm run --workspace @studio/app build",
+    "test": "npm run test --workspaces --if-present",
+    "test:types": "npm run --workspace @studio/shared-types test",
+    "test:registry": "npm run --workspace @studio/template-registry test",
+    "test:renderer": "npm run --workspace @studio/renderer test",
+    "test:mcp": "npm run --workspace @studio/mcp-server test",
+    "studio": "npm run --workspace @studio/remotion-compositions studio",
+    "type-check": "npm run type-check --workspaces --if-present"
   },
   "devDependencies": {
     "typescript": "^5.5.0"
@@ -30,6 +30,6 @@
     "bun": ">=1.3.0"
   },
   "dependencies": {
-    "zod": "4.3.6"
+    "zod": "^3.23.0"
   }
 }

@@ -10,3 +10,5 @@ exports/
 *.mov
 *.gif
 !public/**
+package-lock.json
+data/

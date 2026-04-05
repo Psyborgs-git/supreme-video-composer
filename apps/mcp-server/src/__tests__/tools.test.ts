@@ -25,12 +25,12 @@ function parseText(result: { content: { type: string; text: string }[] }) {
 // ─── list_templates ───────────────────────────────────────────────
 
 describe("MCP: list_templates", () => {
-  it("returns an array of 5 templates", async () => {
+  it("returns an array of 6 templates", async () => {
     const result = await handleListTemplates();
     expect(result.isError).toBeUndefined();
     const templates = parseText(result);
     expect(Array.isArray(templates)).toBe(true);
-    expect(templates).toHaveLength(5);
+    expect(templates).toHaveLength(6);
   });
 
   it("each template has required fields", async () => {

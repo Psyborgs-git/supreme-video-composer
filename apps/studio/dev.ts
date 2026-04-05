@@ -4,6 +4,14 @@
  */
 
 import { spawn } from "child_process";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+// Compatible with both Bun (import.meta.dir) and Node.js
+const STUDIO_DIR: string =
+  (import.meta as any).dir ??
+  import.meta.dirname ??
+  path.dirname(fileURLToPath(import.meta.url));
 
 let serverProcess: ReturnType<typeof spawn> | null = null;
 let viteProcess: ReturnType<typeof spawn> | null = null;
@@ -13,7 +21,7 @@ function startServer() {
   console.log("[dev] starting studio-api server on :3001...");
   serverProcess = spawn("bun", ["run", "server.ts"], {
     stdio: "inherit",
-    cwd: import.meta.dir,
+    cwd: STUDIO_DIR,
   });
 
   serverProcess.on("exit", (code) => {
@@ -29,7 +37,7 @@ function startVite() {
   console.log("[dev] starting vite dev server on :3000...");
   viteProcess = spawn("vite", [], {
     stdio: "inherit",
-    cwd: import.meta.dir,
+    cwd: STUDIO_DIR,
   });
 
   viteProcess.on("exit", (code) => {
