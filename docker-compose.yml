@@ -1,0 +1,16 @@
+services:
+  studio:
+    build: .
+    image: media-studio:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data/assets:/data/assets
+      - ./data/projects:/data/projects
+      - ./data/exports:/data/exports
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - EXPORTS_DIR=/data/exports
+    restart: unless-stopped
+    shm_size: '2gb'
