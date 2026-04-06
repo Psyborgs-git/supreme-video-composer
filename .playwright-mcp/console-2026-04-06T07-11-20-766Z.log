@@ -1,0 +1,57 @@
+[     993ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=488ce016:20102
+[ 1007716ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:3000/@vite/client:963
+[ 1247805ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: WebSocket opening handshake timed out @ http://localhost:3000/@vite/client:1034
+[ 1428643ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Connection closed before receiving a handshake response @ http://localhost:3000/@vite/client:1034
+[ 1429735ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 1435043ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 1436267ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/@vite/client:1034
+[ 1437284ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/@vite/client:1034
+[ 1438306ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/@vite/client:1034
+[ 1439316ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/@vite/client:1034
+[ 1440345ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 1441448ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 1442563ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 1443848ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 1445632ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 1447418ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 1450398ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 1454191ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 1458540ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 1463899ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 1468857ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 1715011ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: WebSocket opening handshake timed out @ http://localhost:3000/@vite/client:1034
+[ 1956070ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: WebSocket opening handshake timed out @ http://localhost:3000/@vite/client:1034
+[ 2197145ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: WebSocket opening handshake timed out @ http://localhost:3000/@vite/client:1034
+[ 2438185ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: WebSocket opening handshake timed out @ http://localhost:3000/@vite/client:1034
+[ 2460005ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Connection closed before receiving a handshake response @ http://localhost:3000/@vite/client:1034
+[ 2461056ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 2469068ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 2470204ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 2471337ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 2472407ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 2473433ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 2474478ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error in connection establishment: net::ERR_SOCKET_NOT_CONNECTED @ http://localhost:3000/@vite/client:1034
+[ 2475615ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 2476763ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 2478019ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 2479569ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 2481116ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 2483724ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 2728385ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: WebSocket opening handshake timed out @ http://localhost:3000/@vite/client:1034
+[ 2969435ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: WebSocket opening handshake timed out @ http://localhost:3000/@vite/client:1034
+[ 3016101ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Connection closed before receiving a handshake response @ http://localhost:3000/@vite/client:1034
+[ 3017123ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/@vite/client:1034
+[ 3018128ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/@vite/client:1034
+[ 3019639ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 3020651ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 3021674ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 3022702ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 3023772ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 3024849ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 3025990ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/@vite/client:1034
+[ 3267473ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: WebSocket opening handshake timed out @ http://localhost:3000/@vite/client:1034
+[ 3508573ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: WebSocket opening handshake timed out @ http://localhost:3000/@vite/client:1034
+[ 3749608ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: WebSocket opening handshake timed out @ http://localhost:3000/@vite/client:1034
+[ 3990624ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: WebSocket opening handshake timed out @ http://localhost:3000/@vite/client:1034
+[ 4231648ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: WebSocket opening handshake timed out @ http://localhost:3000/@vite/client:1034
+[ 4472670ms] [ERROR] WebSocket connection to 'ws://localhost:3000/' failed: WebSocket opening handshake timed out @ http://localhost:3000/@vite/client:1034

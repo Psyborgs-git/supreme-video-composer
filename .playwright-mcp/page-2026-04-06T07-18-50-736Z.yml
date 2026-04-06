@@ -1,0 +1,56 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - link "M Media Studio" [ref=e5] [cursor=pointer]:
+      - /url: /
+      - generic [ref=e6]: M
+      - generic [ref=e7]: Media Studio
+    - navigation [ref=e8]:
+      - link "Templates" [ref=e9] [cursor=pointer]:
+        - /url: /
+      - link "Projects" [ref=e10] [cursor=pointer]:
+        - /url: /projects
+      - link "Assets" [ref=e11] [cursor=pointer]:
+        - /url: /assets
+  - main [ref=e12]:
+    - generic [ref=e353]:
+      - generic [ref=e354]:
+        - heading "Assets" [level=1] [ref=e355]
+        - paragraph [ref=e356]: Upload and manage media files for your templates
+      - generic [ref=e357]:
+        - textbox "Search assets…" [ref=e358]
+        - combobox [ref=e359]:
+          - option "All types" [selected]
+          - option "Images"
+          - option "Videos"
+          - option "Audio"
+          - option "Fonts"
+        - button "Refresh" [ref=e360]
+      - generic [ref=e361] [cursor=pointer]:
+        - generic [ref=e362]: ⬆
+        - paragraph [ref=e363]: Drop files here or click to upload
+        - paragraph [ref=e364]: Images, videos, and audio files
+      - generic [ref=e366]:
+        - button "hero-card-final hero-card-final image · 495 B" [ref=e397]:
+          - img "hero-card-final" [ref=e398]
+          - generic [ref=e372]:
+            - paragraph [ref=e373]: hero-card-final
+            - paragraph [ref=e374]: image · 495 B
+        - complementary [ref=e375]:
+          - img "hero-card-final" [ref=e399]
+          - generic [ref=e378]:
+            - heading "hero-card-final" [level=2] [ref=e400]
+            - paragraph [ref=e401]: image
+          - generic [ref=e381]:
+            - generic [ref=e382]:
+              - generic [ref=e383]: Size
+              - generic [ref=e384]: 495 B
+            - generic [ref=e385]:
+              - generic [ref=e386]: MIME
+              - generic [ref=e387]: image/svg+xml
+            - generic [ref=e388]:
+              - generic [ref=e389]: Created
+              - generic [ref=e390]: 06/04/2026, 12:46:10
+          - generic [ref=e391]:
+            - button "Copy URL" [ref=e392]
+            - button "Rename" [ref=e393]
+            - button "Delete" [ref=e394]

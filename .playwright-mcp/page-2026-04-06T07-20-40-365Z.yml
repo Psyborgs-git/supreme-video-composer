@@ -1,0 +1,71 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - link "M Media Studio" [ref=e5] [cursor=pointer]:
+      - /url: /
+      - generic [ref=e6]: M
+      - generic [ref=e7]: Media Studio
+    - navigation [ref=e8]:
+      - link "Templates" [ref=e9] [cursor=pointer]:
+        - /url: /
+      - link "Projects" [active] [ref=e10] [cursor=pointer]:
+        - /url: /projects
+      - link "Assets" [ref=e11] [cursor=pointer]:
+        - /url: /assets
+  - main [ref=e12]:
+    - generic [ref=e402]:
+      - generic [ref=e403]:
+        - generic [ref=e404]:
+          - heading "Projects" [level=1] [ref=e405]
+          - paragraph [ref=e406]: Your saved projects
+        - link "New Project" [ref=e407] [cursor=pointer]:
+          - /url: /
+      - generic [ref=e408]:
+        - textbox "Search by project or template…" [ref=e409]
+        - combobox [ref=e410]:
+          - option "All templates" [selected]
+          - option "BabyLens"
+          - option "History Storyline"
+        - combobox [ref=e411]:
+          - option "Sort by last modified" [selected]
+          - option "Sort by created"
+          - option "Sort by name"
+      - generic [ref=e412]:
+        - heading "Recent" [level=2] [ref=e413]
+        - generic [ref=e414]:
+          - button "test1 BabyLens" [ref=e415]:
+            - generic [ref=e416]: test1
+            - generic [ref=e417]: BabyLens
+          - button "Playwright Project Copy History Storyline" [ref=e418]:
+            - generic [ref=e419]: Playwright Project Copy
+            - generic [ref=e420]: History Storyline
+          - button "Playwright Project History Storyline" [ref=e421]:
+            - generic [ref=e422]: Playwright Project
+            - generic [ref=e423]: History Storyline
+      - generic [ref=e424]:
+        - generic [ref=e425]:
+          - generic [ref=e426]:
+            - heading "test1" [level=2] [ref=e427]
+            - paragraph [ref=e428]: "Template: BabyLens · Instagram Reel · v1"
+            - paragraph [ref=e429]: Updated 06/04/2026, 12:47:14
+          - generic [ref=e430]:
+            - button "Open" [ref=e431]
+            - button "Duplicate" [ref=e432]
+            - button "Delete" [ref=e433]
+        - generic [ref=e434]:
+          - generic [ref=e435]:
+            - heading "Playwright Project Copy" [level=2] [ref=e436]
+            - paragraph [ref=e437]: "Template: History Storyline · YouTube · v1"
+            - paragraph [ref=e438]: Updated 06/04/2026, 12:43:56
+          - generic [ref=e439]:
+            - button "Open" [ref=e440]
+            - button "Duplicate" [ref=e441]
+            - button "Delete" [ref=e442]
+        - generic [ref=e443]:
+          - generic [ref=e444]:
+            - heading "Playwright Project" [level=2] [ref=e445]
+            - paragraph [ref=e446]: "Template: History Storyline · YouTube · v1"
+            - paragraph [ref=e447]: Updated 06/04/2026, 12:42:54
+          - generic [ref=e448]:
+            - button "Open" [ref=e449]
+            - button "Duplicate" [ref=e450]
+            - button "Delete" [ref=e451]

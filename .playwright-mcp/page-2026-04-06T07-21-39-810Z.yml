@@ -1,0 +1,129 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - link "M Media Studio" [ref=e5] [cursor=pointer]:
+      - /url: /
+      - generic [ref=e6]: M
+      - generic [ref=e7]: Media Studio
+    - navigation [ref=e8]:
+      - link "Templates" [ref=e9] [cursor=pointer]:
+        - /url: /
+      - link "Projects" [ref=e10] [cursor=pointer]:
+        - /url: /projects
+      - link "Assets" [ref=e11] [cursor=pointer]:
+        - /url: /assets
+  - main [ref=e12]:
+    - generic [ref=e452]:
+      - generic [ref=e453]:
+        - generic [ref=e454]: 1920 × 1080 · YouTube
+        - generic [ref=e455]:
+          - generic [ref=e460]:
+            - generic:
+              - generic: History Timeline
+          - generic [ref=e462]:
+            - generic [ref=e463]:
+              - button "Play video" [active] [ref=e464] [cursor=pointer]:
+                - img [ref=e465]
+              - button "Mute sound" [ref=e468] [cursor=pointer]:
+                - img [ref=e469]
+              - generic [ref=e471]: 0:00 / 0:17
+            - button "Enter Fullscreen" [ref=e473] [cursor=pointer]:
+              - img [ref=e474]
+      - complementary [ref=e484]:
+        - generic [ref=e485]:
+          - heading "History Storyline" [level=2] [ref=e486]
+          - paragraph [ref=e487]: Animated timeline of historical events with year badges and descriptions
+        - generic [ref=e488]:
+          - heading "Aspect Ratio" [level=3] [ref=e489]
+          - generic [ref=e490]:
+            - button "YouTube 16:9 · YouTube" [ref=e491]:
+              - generic [ref=e492]: YouTube
+              - generic [ref=e493]: 16:9 · YouTube
+            - button "Instagram Reel 9:16 · Instagram" [ref=e494]:
+              - generic [ref=e495]: Instagram Reel
+              - generic [ref=e496]: 9:16 · Instagram
+            - button "Instagram Post 1:1 · Instagram" [ref=e497]:
+              - generic [ref=e498]: Instagram Post
+              - generic [ref=e499]: 1:1 · Instagram
+        - generic [ref=e500]:
+          - heading "Properties" [level=3] [ref=e501]
+          - generic [ref=e502]:
+            - generic [ref=e503]:
+              - generic [ref=e504]: Title
+              - textbox [ref=e505]: History Timeline
+            - generic [ref=e506]:
+              - generic [ref=e507]: Events
+              - textbox [ref=e508]: "[ { \"year\": \"1969\", \"title\": \"Moon Landing\", \"description\": \"Apollo 11 lands on the Moon\" }, { \"year\": \"1989\", \"title\": \"Fall of Berlin Wall\", \"description\": \"The Berlin Wall comes down\" }, { \"year\": \"2007\", \"title\": \"First iPhone\", \"description\": \"Apple introduces the iPhone\" } ]"
+            - generic [ref=e509]:
+              - generic [ref=e510]: Duration Per Event In Frames
+              - spinbutton [ref=e511]: "150"
+            - generic [ref=e512]:
+              - generic [ref=e513]: Transition Duration In Frames
+              - spinbutton [ref=e514]: "30"
+            - generic [ref=e515]:
+              - generic [ref=e516]: Background Color
+              - generic [ref=e517]:
+                - textbox [ref=e518] [cursor=pointer]: "#0f172a"
+                - textbox [ref=e519]: "#0f172a"
+            - generic [ref=e520]:
+              - generic [ref=e521]: Accent Color
+              - generic [ref=e522]:
+                - textbox [ref=e523] [cursor=pointer]: "#3b82f6"
+                - textbox [ref=e524]: "#3b82f6"
+            - generic [ref=e525]:
+              - generic [ref=e526]: Text Color
+              - generic [ref=e527]:
+                - textbox [ref=e528] [cursor=pointer]: "#f8fafc"
+                - textbox [ref=e529]: "#f8fafc"
+            - generic [ref=e530]:
+              - generic [ref=e531]: Music Url
+              - textbox [ref=e532]
+            - generic [ref=e533]:
+              - generic [ref=e534]: Music Volume
+              - spinbutton [ref=e535]: "0.3"
+        - generic [ref=e536]:
+          - heading "Export" [level=3] [ref=e538]
+          - generic [ref=e539]:
+            - paragraph [ref=e540]:
+              - generic [ref=e541]: ✓
+              - generic [ref=e542]: "Project saved (id: 17754595…)"
+            - generic [ref=e543]:
+              - heading "Quality" [level=3] [ref=e544]
+              - generic [ref=e545]:
+                - button "Draft Fast, larger file" [ref=e546]:
+                  - generic [ref=e547]: Draft
+                  - generic [ref=e548]: Fast, larger file
+                - button "Standard Balanced" [ref=e549]:
+                  - generic [ref=e550]: Standard
+                  - generic [ref=e551]: Balanced
+                - button "High Smaller, slower" [ref=e552]:
+                  - generic [ref=e553]: High
+                  - generic [ref=e554]: Smaller, slower
+                - button "Max Lossless" [ref=e555]:
+                  - generic [ref=e556]: Max
+                  - generic [ref=e557]: Lossless
+            - generic [ref=e558]:
+              - heading "Format" [level=3] [ref=e559]
+              - combobox [ref=e560]:
+                - option "H.264 (MP4)" [selected]
+                - option "H.265 (MP4)"
+                - option "VP8 (WebM)"
+                - option "VP9 (WebM)"
+                - option "AV1 (WebM)"
+                - option "ProRes (MOV)"
+                - option "GIF"
+            - generic [ref=e561]:
+              - heading "Resolution Scale" [level=3] [ref=e562]
+              - generic [ref=e563]:
+                - button "0.5× (half)" [ref=e564]
+                - button "1× (native)" [ref=e565]
+                - button "2× (double)" [ref=e566]
+            - generic [ref=e567]:
+              - heading "Frame Rate" [level=3] [ref=e568]
+              - generic [ref=e569]:
+                - button "24" [ref=e570]
+                - button "25" [ref=e571]
+                - button "30" [ref=e572]
+                - button "60" [ref=e573]
+            - button "Export Video" [ref=e574]:
+              - img [ref=e575]
+              - text: Export Video

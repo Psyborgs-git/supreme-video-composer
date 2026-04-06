@@ -1,0 +1,44 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - link "M Media Studio" [ref=e5] [cursor=pointer]:
+      - /url: /
+      - generic [ref=e6]: M
+      - generic [ref=e7]: Media Studio
+    - navigation [ref=e8]:
+      - link "Templates" [ref=e9] [cursor=pointer]:
+        - /url: /
+      - link "Projects" [active] [ref=e10] [cursor=pointer]:
+        - /url: /projects
+      - link "Assets" [ref=e11] [cursor=pointer]:
+        - /url: /assets
+  - main [ref=e12]:
+    - generic [ref=e315]:
+      - generic [ref=e316]:
+        - generic [ref=e317]:
+          - heading "Projects" [level=1] [ref=e318]
+          - paragraph [ref=e319]: Your saved projects
+        - link "New Project" [ref=e320] [cursor=pointer]:
+          - /url: /
+      - generic [ref=e321]:
+        - textbox "Search by project or template…" [ref=e322]
+        - combobox [ref=e323]:
+          - option "All templates" [selected]
+          - option "History Storyline"
+        - combobox [ref=e324]:
+          - option "Sort by last modified" [selected]
+          - option "Sort by created"
+          - option "Sort by name"
+      - generic [ref=e325]:
+        - heading "Recent" [level=2] [ref=e326]
+        - button "Playwright Project History Storyline" [ref=e328]:
+          - generic [ref=e329]: Playwright Project
+          - generic [ref=e330]: History Storyline
+      - generic [ref=e332]:
+        - generic [ref=e333]:
+          - heading "Playwright Project" [level=2] [ref=e334]
+          - paragraph [ref=e335]: "Template: History Storyline · YouTube · v1"
+          - paragraph [ref=e336]: Updated 06/04/2026, 12:42:54
+        - generic [ref=e337]:
+          - button "Open" [ref=e338]
+          - button "Duplicate" [ref=e339]
+          - button "Delete" [ref=e340]

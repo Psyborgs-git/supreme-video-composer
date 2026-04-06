@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080" fill="none">
+  <rect width="1080" height="1080" fill="#111827"/>
+  <rect x="120" y="120" width="840" height="840" rx="64" fill="#2563EB"/>
+  <text x="540" y="500" text-anchor="middle" fill="white" font-size="120" font-family="Arial, sans-serif" font-weight="700">Media</text>
+  <text x="540" y="620" text-anchor="middle" fill="#DBEAFE" font-size="96" font-family="Arial, sans-serif">Studio</text>
+</svg>

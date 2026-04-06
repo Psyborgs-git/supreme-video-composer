@@ -1,0 +1,5 @@
+[   12361ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=488ce016:20102
+[   17611ms] [WARNING] EncodingError: The source image cannot be decoded. @ http://localhost:3000/node_modules/.vite/deps/chunk-QFUWIE3M.js?v=0ce981d5:6354
+[   17619ms] [WARNING] EncodingError: The source image cannot be decoded. @ http://localhost:3000/node_modules/.vite/deps/chunk-QFUWIE3M.js?v=0ce981d5:6354
+[   18870ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/favicon.ico:0
+[  125568ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/node_modules/.vite/deps/react-dom_client.js?v=488ce016:20102

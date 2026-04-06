@@ -1,0 +1,199 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - link "M Media Studio" [ref=e5] [cursor=pointer]:
+      - /url: /
+      - generic [ref=e6]: M
+      - generic [ref=e7]: Media Studio
+    - navigation [ref=e8]:
+      - link "Templates" [ref=e9] [cursor=pointer]:
+        - /url: /
+      - link "Projects" [ref=e10] [cursor=pointer]:
+        - /url: /projects
+      - link "Assets" [ref=e11] [cursor=pointer]:
+        - /url: /assets
+  - main [ref=e12]:
+    - generic [ref=e13]:
+      - generic [ref=e14]:
+        - heading "Templates" [level=1] [ref=e15]
+        - paragraph [ref=e16]: Pick a template to create a new video
+      - generic [ref=e17]:
+        - textbox "Search templates…" [ref=e18]
+        - button "all" [ref=e19]
+        - button "social" [ref=e20]
+        - button "music" [ref=e21]
+        - button "educational" [ref=e22]
+        - button "marketing" [ref=e23]
+      - generic [ref=e24]:
+        - generic [ref=e25] [cursor=pointer]:
+          - generic [ref=e26]:
+            - button "✎" [ref=e27]
+            - button "✕" [ref=e28]
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: "1969"
+                            - generic: Moon Landing
+                            - generic: Apollo 11 lands on the Moon
+          - generic [ref=e29]:
+            - generic [ref=e30]:
+              - heading "History Storyline" [level=3] [ref=e31]
+              - generic [ref=e32]: educational
+            - paragraph [ref=e33]: Animated timeline of historical events with year badges and descriptions
+            - generic [ref=e34]:
+              - generic [ref=e35]: history
+              - generic [ref=e36]: timeline
+              - generic [ref=e37]: educational
+            - generic [ref=e38]:
+              - generic [ref=e39]: YouTube · Instagram Reel · Instagram Post
+              - generic [ref=e40]: 17.0s · 30fps
+            - button "Use Template →" [ref=e41]
+        - generic [ref=e42] [cursor=pointer]:
+          - generic [ref=e43]:
+            - button "✎" [ref=e44]
+            - button "✕" [ref=e45]
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: Now Playing
+                      - generic: Artist Name
+                    - generic: ⚠ audio analysis unavailable
+          - generic [ref=e46]:
+            - generic [ref=e47]:
+              - heading "Beat-Synced Visualizer" [level=3] [ref=e48]
+              - generic [ref=e49]: music
+            - paragraph [ref=e50]: Audio-reactive visualization with bars, circles, or waveform modes
+            - generic [ref=e51]:
+              - generic [ref=e52]: audio
+              - generic [ref=e53]: music
+              - generic [ref=e54]: visualizer
+            - generic [ref=e55]:
+              - generic [ref=e56]: Instagram Post · YouTube · Instagram Reel
+              - generic [ref=e57]: 30.0s · 30fps
+            - button "Use Template →" [ref=e58]
+        - generic [ref=e59] [cursor=pointer]:
+          - generic [ref=e60]:
+            - button "✎" [ref=e61]
+            - button "✕" [ref=e62]
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic: “
+                          - generic: The only way to do great work is to love what you do.
+                          - generic: — Steve Jobs
+          - generic [ref=e63]:
+            - generic [ref=e64]:
+              - heading "Quote Card Sequence" [level=3] [ref=e65]
+              - generic [ref=e66]: social
+            - paragraph [ref=e67]: Sequential animated quote cards with gradient backgrounds
+            - generic [ref=e68]:
+              - generic [ref=e69]: quotes
+              - generic [ref=e70]: inspirational
+              - generic [ref=e71]: text
+            - generic [ref=e72]:
+              - generic [ref=e73]: Instagram Post · Instagram Reel · YouTube · Pinterest Pin
+              - generic [ref=e74]: 12.0s · 30fps
+            - button "Use Template →" [ref=e75]
+        - generic [ref=e76] [cursor=pointer]:
+          - generic [ref=e77]:
+            - button "✎" [ref=e78]
+            - button "✕" [ref=e79]
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - img
+                        - generic:
+                          - generic: Slide 1
+                        - generic: "@yourbrand"
+          - generic [ref=e80]:
+            - generic [ref=e81]:
+              - heading "Social Media Reel" [level=3] [ref=e82]
+              - generic [ref=e83]: social
+            - paragraph [ref=e84]: Fast-paced reel with images/videos, transitions, and brand watermark
+            - generic [ref=e85]:
+              - generic [ref=e86]: reel
+              - generic [ref=e87]: social
+              - generic [ref=e88]: instagram
+            - generic [ref=e89]:
+              - generic [ref=e90]: Instagram Reel · Instagram Post · TikTok
+              - generic [ref=e91]: 9.0s · 30fps
+            - button "Use Template →" [ref=e92]
+        - generic [ref=e93] [cursor=pointer]:
+          - generic [ref=e94]:
+            - button "✎" [ref=e95]
+            - button "✕" [ref=e96]
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - img
+                            - generic: $299
+                          - generic: Premium Headphones
+                          - generic: Immersive Sound
+          - generic [ref=e97]:
+            - generic [ref=e98]:
+              - heading "Product Showcase" [level=3] [ref=e99]
+              - generic [ref=e100]: marketing
+            - paragraph [ref=e101]: Product presentation with spring animations and price badges
+            - generic [ref=e102]:
+              - generic [ref=e103]: product
+              - generic [ref=e104]: ecommerce
+              - generic [ref=e105]: marketing
+            - generic [ref=e106]:
+              - generic [ref=e107]: Instagram Post · Pinterest Pin · YouTube · LinkedIn Landscape
+              - generic [ref=e108]: 8.0s · 30fps
+            - button "Use Template →" [ref=e109]
+        - generic [ref=e110] [cursor=pointer]:
+          - generic [ref=e111]:
+            - button "✎" [ref=e112]
+            - button "✕" [ref=e113]
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - img
+                        - generic:
+                          - generic: Baby
+                          - generic: LENS
+                        - generic: Every moment, captured with love.
+                        - generic: ✨ The app that finally has your back
+          - generic [ref=e114]:
+            - generic [ref=e115]:
+              - heading "BabyLens" [level=3] [ref=e116]
+              - generic [ref=e117]: social
+            - paragraph [ref=e118]: Social reel for parenting apps with POV, product reveal, features, and CTA
+            - generic [ref=e119]:
+              - generic [ref=e120]: social
+              - generic [ref=e121]: reel
+              - generic [ref=e122]: parenting
+            - generic [ref=e123]:
+              - generic [ref=e124]: Instagram Reel · YouTube Shorts · TikTok
+              - generic [ref=e125]: 30.0s · 30fps
+            - button "Use Template →" [ref=e126]
