@@ -67,11 +67,6 @@ COPY --from=builder /app/tsconfig.base.json ./
 COPY --from=builder /app/packages/ ./packages/
 COPY --from=builder /app/apps/ ./apps/
 
-# Copy workspace-local node_modules that npm may have created
-RUN for dir in apps/studio apps/mcp-server packages/shared-types packages/remotion-compositions packages/template-registry packages/renderer; do \
-      mkdir -p "$dir/node_modules" 2>/dev/null || true; \
-    done
-
 # Create writable directories for runtime data
 RUN mkdir -p /data/assets /data/projects /data/exports \
     && chown -R studio:studio /data \
