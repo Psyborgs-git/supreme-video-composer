@@ -494,3 +494,462 @@ function hasAssetReference(value: unknown, assetId: string): boolean {
   }
   return false;
 }
+
+// ─── TikTok Caption tool: split transcript to captions ──────────
+
+export async function handleSplitTranscriptToCaptions(args: {
+  transcript: string;
+  wordsPerCaption?: number;
+  totalDurationFrames?: number;
+  fps?: number;
+}): Promise<ToolResult> {
+  const { transcript, wordsPerCaption = 4, totalDurationFrames = 300, fps = 30 } = args;
+
+  if (!transcript || !transcript.trim()) {
+    return errorResult("VALIDATION_ERROR", "transcript is required and must not be empty");
+  }
+
+  const words = transcript.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) {
+    return okResult({ captions: [] });
+  }
+
+  const captions: Array<{ text: string; startFrame: number; endFrame: number }> = [];
+  const totalChars = words.join(" ").length;
+  let charIndex = 0;
+
+  for (let i = 0; i < words.length; i += wordsPerCaption) {
+    const chunk = words.slice(i, i + wordsPerCaption);
+    const text = chunk.join(" ");
+
+    const startFraction = charIndex / totalChars;
+    charIndex += text.length + (i + wordsPerCaption < words.length ? 1 : 0);
+    const endFraction = charIndex / totalChars;
+
+    const startFrame = Math.round(startFraction * totalDurationFrames);
+    const endFrame = Math.round(endFraction * totalDurationFrames);
+
+    captions.push({ text, startFrame, endFrame });
+  }
+
+  return okResult({ captions });
+}
+
+// ─── Prompt-to-Video tools ──────────────────────────────────────
+
+interface GeneratedScene {
+  title: string;
+  body: string;
+  imageUrl: string;
+  durationFrames: number;
+  enterTransition: string;
+  exitTransition: string;
+  voiceoverText: string;
+}
+
+export async function handleGenerateVideoScript(args: {
+  prompt: string;
+  sceneCount?: number;
+  style?: string;
+}): Promise<ToolResult> {
+  const { prompt, sceneCount = 5, style } = args;
+
+  if (!prompt || !prompt.trim()) {
+    return errorResult("VALIDATION_ERROR", "prompt is required and must not be empty");
+  }
+
+  // Split prompt into sentences and create scenes
+  const sentences = prompt
+    .split(/[.!?]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const scenes: GeneratedScene[] = [];
+  const perScene = Math.max(1, Math.ceil(sentences.length / sceneCount));
+
+  for (let i = 0; i < sceneCount; i++) {
+    const chunk = sentences.slice(i * perScene, (i + 1) * perScene);
+    const body = chunk.join(". ") || `Scene ${i + 1}`;
+    scenes.push({
+      title: `Scene ${i + 1}`,
+      body: body + (body.endsWith(".") ? "" : "."),
+      imageUrl: "",
+      durationFrames: 150,
+      enterTransition: style === "fast" ? "swipe" : "fade",
+      exitTransition: style === "fast" ? "swipe" : "fade",
+      voiceoverText: body,
+    });
+  }
+
+  return okResult({ scenes });
+}
+
+export async function handleCreateSceneSequence(args: {
+  templateId: string;
+  name: string;
+  scenes: Array<{
+    title: string;
+    body: string;
+    imageUrl?: string;
+    durationFrames?: number;
+    enterTransition?: string;
+    exitTransition?: string;
+    voiceoverText?: string;
+  }>;
+  aspectRatio?: string;
+}): Promise<ToolResult> {
+  const { templateId, name, scenes, aspectRatio } = args;
+
+  if (templateId !== "prompt-to-video") {
+    return errorResult(
+      "INVALID_TEMPLATE",
+      `create_scene_sequence only works with templateId "prompt-to-video", got "${templateId}"`,
+    );
+  }
+
+  if (!scenes || scenes.length === 0) {
+    return errorResult("VALIDATION_ERROR", "scenes array is required and must not be empty");
+  }
+
+  // Delegate to create_project with constructed inputProps
+  return handleCreateProject({
+    templateId,
+    name,
+    inputProps: { scenes },
+    aspectRatio,
+  });
+}
+
+export async function handleUpdateScene(args: {
+  projectId: string;
+  sceneIndex: number;
+  sceneUpdates: Record<string, unknown>;
+}): Promise<ToolResult> {
+  const { projectId, sceneIndex, sceneUpdates } = args;
+
+  const project = projectStore.get(projectId);
+  if (!project) {
+    return errorResult("PROJECT_NOT_FOUND", `Project "${projectId}" not found`);
+  }
+
+  const scenes = project.inputProps.scenes as GeneratedScene[] | undefined;
+  if (!scenes || !Array.isArray(scenes)) {
+    return errorResult("INVALID_PROJECT", "Project does not have a scenes array in inputProps");
+  }
+
+  if (sceneIndex < 0 || sceneIndex >= scenes.length) {
+    return errorResult(
+      "INVALID_SCENE_INDEX",
+      `Scene index ${sceneIndex} out of range (0-${scenes.length - 1})`,
+    );
+  }
+
+  scenes[sceneIndex] = { ...scenes[sceneIndex], ...sceneUpdates } as GeneratedScene;
+  project.inputProps.scenes = scenes;
+  project.updatedAt = new Date().toISOString();
+  project.version++;
+  projectStore.set(projectId, project);
+
+  return okResult(project);
+}
+
+// ─── Template Creator tools ─────────────────────────────────────
+
+interface FieldSchema {
+  key: string;
+  type: string;
+  label: string;
+  description: string;
+  required: boolean;
+  defaultValue?: unknown;
+  validation?: Record<string, unknown>;
+}
+
+/** In-memory store for user-created template scaffolds */
+export const templateScaffoldStore = new Map<
+  string,
+  { compositionCode: string; schemaCode: string }
+>();
+
+export async function handleCreateTemplate(args: {
+  name: string;
+  description: string;
+  category: string;
+  fields: FieldSchema[];
+  supportedAspectRatios: string[];
+  defaultAspectRatio: string;
+  defaultDurationFrames: number;
+  defaultFps: number;
+}): Promise<ToolResult> {
+  const {
+    name,
+    description,
+    category,
+    fields,
+    supportedAspectRatios,
+    defaultAspectRatio,
+    defaultDurationFrames,
+    defaultFps,
+  } = args;
+
+  if (!name || !name.trim()) {
+    return errorResult("VALIDATION_ERROR", "name is required");
+  }
+
+  const id = name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  // Check if template already exists
+  if (getTemplate(id)) {
+    return errorResult("TEMPLATE_EXISTS", `Template "${id}" already exists`);
+  }
+
+  // Generate Zod schema code from fields
+  const schemaLines = fields.map((f) => {
+    let zodType: string;
+    switch (f.type) {
+      case "number":
+        zodType = "z.number()";
+        if (f.validation?.min !== undefined) zodType += `.min(${f.validation.min})`;
+        if (f.validation?.max !== undefined) zodType += `.max(${f.validation.max})`;
+        break;
+      case "boolean":
+        zodType = "z.boolean()";
+        break;
+      case "color":
+        zodType = "z.string()";
+        break;
+      case "asset-image":
+      case "asset-audio":
+      case "asset-video":
+        zodType = "z.string()";
+        break;
+      case "string-array":
+        zodType = "z.array(z.string())";
+        break;
+      case "asset-image-array":
+        zodType = "z.array(z.string())";
+        break;
+      default:
+        zodType = "z.string()";
+        if (f.validation?.maxLength) zodType += `.max(${f.validation.maxLength})`;
+        break;
+    }
+    if (f.defaultValue !== undefined) {
+      zodType += `.default(${JSON.stringify(f.defaultValue)})`;
+    } else if (!f.required) {
+      zodType += `.optional()`;
+    }
+    return `  ${f.key}: ${zodType},`;
+  });
+
+  const schemaCode = [
+    `import { z } from "zod";`,
+    ``,
+    `export const schema = z.object({`,
+    ...schemaLines,
+    `});`,
+    ``,
+    `export type Props = z.infer<typeof schema>;`,
+  ].join("\n");
+
+  const compositionCode = [
+    `import { useCurrentFrame, useVideoConfig, interpolate } from "remotion";`,
+    `import type { Props } from "./schema";`,
+    ``,
+    `export const ${name.replace(/[^a-zA-Z0-9]/g, "")}Template: React.FC<Props> = (props) => {`,
+    `  const frame = useCurrentFrame();`,
+    `  const { width, height, fps, durationInFrames } = useVideoConfig();`,
+    ``,
+    `  return (`,
+    `    <div style={{ width, height, background: "#000", color: "#fff",`,
+    `                  display: "flex", alignItems: "center", justifyContent: "center" }}>`,
+    `      <p style={{ fontSize: width * 0.05 }}>`,
+    `        {JSON.stringify(props, null, 2)}`,
+    `      </p>`,
+    `    </div>`,
+    `  );`,
+    `};`,
+  ].join("\n");
+
+  // Store scaffold
+  templateScaffoldStore.set(id, { compositionCode, schemaCode });
+
+  // Build a dynamic Zod schema for the template
+  const schemaObj: Record<string, z.ZodType> = {};
+  for (const f of fields) {
+    let zt: z.ZodType;
+    switch (f.type) {
+      case "number":
+        zt = z.number();
+        break;
+      case "boolean":
+        zt = z.boolean();
+        break;
+      default:
+        zt = z.string();
+        break;
+    }
+    schemaObj[f.key] = f.required ? zt : zt.optional();
+  }
+  const dynamicSchema = z.object(schemaObj);
+
+  // Build default props
+  const defaultProps: Record<string, unknown> = {};
+  for (const f of fields) {
+    if (f.defaultValue !== undefined) defaultProps[f.key] = f.defaultValue;
+    else if (!f.required) defaultProps[f.key] = undefined;
+    else if (f.type === "number") defaultProps[f.key] = 0;
+    else if (f.type === "boolean") defaultProps[f.key] = false;
+    else defaultProps[f.key] = "";
+  }
+
+  // Register template with a placeholder component
+  const PlaceholderComponent: React.FC<Record<string, unknown>> = () => null;
+
+  const { registerTemplate: regT } = await import("@studio/template-registry");
+  regT({
+    manifest: {
+      id,
+      name,
+      description,
+      category,
+      tags: [category],
+      defaultDurationInFrames: defaultDurationFrames,
+      defaultFps: defaultFps,
+      supportedAspectRatios: supportedAspectRatios as any[],
+      propsSchema: dynamicSchema,
+      defaultProps,
+      thumbnailFrame: 0,
+      compositionId: id,
+    },
+    component: PlaceholderComponent,
+  });
+
+  return okResult({
+    template: {
+      id,
+      name,
+      description,
+      category,
+      fields,
+      supportedAspectRatios,
+      defaultAspectRatio,
+      defaultDurationFrames,
+      defaultFps,
+    },
+  });
+}
+
+export async function handleUpdateTemplateSchema(args: {
+  templateId: string;
+  addFields?: FieldSchema[];
+  removeFieldKeys?: string[];
+}): Promise<ToolResult> {
+  const { templateId, addFields, removeFieldKeys } = args;
+
+  const template = getTemplate(templateId);
+  if (!template) {
+    return errorResult("TEMPLATE_NOT_FOUND", `Template "${templateId}" not found`);
+  }
+
+  const warnings: string[] = [];
+
+  // Check for projects using removed fields
+  if (removeFieldKeys && removeFieldKeys.length > 0) {
+    const projects = Array.from(projectStore.values()).filter(
+      (p) => p.templateId === templateId,
+    );
+    if (projects.length > 0) {
+      warnings.push(
+        `${projects.length} project(s) use this template. Removing fields may break them.`,
+      );
+    }
+  }
+
+  return okResult({
+    template: {
+      id: template.manifest.id,
+      name: template.manifest.name,
+      description: template.manifest.description,
+    },
+    warnings,
+  });
+}
+
+export async function handleGetTemplateScaffold(args: {
+  templateId: string;
+}): Promise<ToolResult> {
+  const scaffold = templateScaffoldStore.get(args.templateId);
+  if (!scaffold) {
+    return errorResult(
+      "SCAFFOLD_NOT_FOUND",
+      `No scaffold found for template "${args.templateId}". Use create_template first.`,
+    );
+  }
+
+  return okResult({
+    compositionCode: scaffold.compositionCode,
+    schemaCode: scaffold.schemaCode,
+  });
+}
+
+export async function handleUpdateTemplateComposition(args: {
+  templateId: string;
+  compositionCode: string;
+}): Promise<ToolResult> {
+  const { templateId, compositionCode } = args;
+
+  const scaffold = templateScaffoldStore.get(templateId);
+  if (!scaffold) {
+    return errorResult(
+      "SCAFFOLD_NOT_FOUND",
+      `No scaffold found for template "${templateId}". Use create_template first.`,
+    );
+  }
+
+  const warnings: string[] = [];
+
+  // Basic validation of the composition code
+  if (!compositionCode.includes("useCurrentFrame") && !compositionCode.includes("useVideoConfig")) {
+    warnings.push("Composition does not use useCurrentFrame or useVideoConfig — is this intentional?");
+  }
+
+  // Update stored scaffold
+  templateScaffoldStore.set(templateId, {
+    ...scaffold,
+    compositionCode,
+  });
+
+  return okResult({ success: true, warnings });
+}
+
+export async function handleValidateTemplate(args: {
+  templateId: string;
+  sampleInputProps?: Record<string, unknown>;
+}): Promise<ToolResult> {
+  const { templateId, sampleInputProps } = args;
+
+  const template = getTemplate(templateId);
+  if (!template) {
+    return errorResult("TEMPLATE_NOT_FOUND", `Template "${templateId}" not found`);
+  }
+
+  const props = sampleInputProps ?? template.manifest.defaultProps;
+  const validation = validateInputProps(templateId, props);
+
+  if (!validation.success) {
+    return okResult({
+      valid: false,
+      errors: [validation.error],
+    });
+  }
+
+  return okResult({
+    valid: true,
+    frameCount: template.manifest.defaultDurationInFrames,
+  });
+}
