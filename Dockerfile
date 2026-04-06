@@ -59,20 +59,18 @@ WORKDIR /app
 # Create non-root user
 RUN groupadd --system studio && useradd --system --gid studio studio
 
-# Copy node_modules from deps
+# Copy all node_modules (root hoisted + workspace-local) from deps stage,
+# then copy built source from builder stage.
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/studio/node_modules ./apps/studio/node_modules 2>/dev/null || true
-COPY --from=deps /app/apps/mcp-server/node_modules ./apps/mcp-server/node_modules 2>/dev/null || true
-COPY --from=deps /app/packages/shared-types/node_modules ./packages/shared-types/node_modules 2>/dev/null || true
-COPY --from=deps /app/packages/remotion-compositions/node_modules ./packages/remotion-compositions/node_modules 2>/dev/null || true
-COPY --from=deps /app/packages/template-registry/node_modules ./packages/template-registry/node_modules 2>/dev/null || true
-COPY --from=deps /app/packages/renderer/node_modules ./packages/renderer/node_modules 2>/dev/null || true
-
-# Copy source and built artifacts
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/tsconfig.base.json ./
 COPY --from=builder /app/packages/ ./packages/
 COPY --from=builder /app/apps/ ./apps/
+
+# Copy workspace-local node_modules that npm may have created
+RUN for dir in apps/studio apps/mcp-server packages/shared-types packages/remotion-compositions packages/template-registry packages/renderer; do \
+      mkdir -p "$dir/node_modules" 2>/dev/null || true; \
+    done
 
 # Create writable directories for runtime data
 RUN mkdir -p /data/assets /data/projects /data/exports \

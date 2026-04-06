@@ -71,7 +71,9 @@ const { app } = createApp(renderQueue, corsOrigin);
 if (isProduction) {
   const distDir = path.join(STUDIO_DIR, "dist");
   if (fs.existsSync(distDir)) {
-    app.use("/*", serveStatic({ root: "./dist", rewriteRequestPath: (p) => p }));
+    // root is relative to CWD; compute the relative path from CWD → distDir
+    const relDist = path.relative(process.cwd(), distDir);
+    app.use("/*", serveStatic({ root: relDist, rewriteRequestPath: (p) => p }));
     // Fallback: serve index.html for client-side routing (SPA)
     app.get("*", (c) => {
       const html = fs.readFileSync(path.join(distDir, "index.html"), "utf-8");

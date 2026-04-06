@@ -4,7 +4,7 @@ A professional, open-source media creation platform built on [Remotion](https://
 
 ## ✨ Features
 
-- **5 Professional Templates**: History Storyline, Beat-Synced Visualizer, Quote Cards, Social Reels, Product Showcase
+- **6 Professional Templates**: History Storyline, Beat-Synced Visualizer, Quote Cards, Social Reels, Product Showcase, BabyLens
 - **Multi-Format Export**: MP4, WebM, ProRes, GIF, PNG/JPEG sequences with quality presets
 - **Aspect Ratio Presets**: Automatic layouts for Instagram, TikTok, YouTube, Twitter, Pinterest, LinkedIn
 - **MCP Server**: AI-native tool integration with Claude, GPT, and other LLM clients
@@ -19,7 +19,7 @@ A professional, open-source media creation platform built on [Remotion](https://
 ### Prerequisites
 
 - **Node.js** 20+ (LTS recommended)
-- **Bun** 1.3.11+ (package manager and runtime)
+- **Bun** 1.3.11+ (package manager and runtime) **or** npm 9+
 - **FFmpeg** (auto-installed by Remotion)
 
 ### Installation
@@ -29,14 +29,14 @@ A professional, open-source media creation platform built on [Remotion](https://
 git clone <this-repo>
 cd remotion-studio
 
-# Install dependencies
-bun install
+# Install dependencies (bun or npm)
+bun install   # or: npm install
 
 # Start development server
-bun run dev
+bun run dev   # or: npm run dev
 ```
 
-The studio opens at **http://localhost:5173** with hot module reloading.
+The studio opens at **http://localhost:3000** with hot module reloading.
 
 ### First Video
 
@@ -45,6 +45,45 @@ The studio opens at **http://localhost:5173** with hot module reloading.
 3. Upload some images or use placeholders
 4. Click **"Preview"** to see live rendering
 5. Click **"Export"** to render to MP4
+
+## 🐳 Quick Start (Docker)
+
+### Prerequisites
+- Docker Desktop or Docker Engine + Compose V2
+- 4GB RAM allocated to Docker (8GB recommended for rendering)
+
+### Run
+
+```bash
+git clone <this-repo>
+cd remotion-studio
+docker compose up
+
+# UI: http://localhost:3000
+# Exports saved to: ./data/exports/
+# Assets stored in: ./data/assets/
+# Projects stored in: ./data/projects/
+```
+
+### Build your own image
+
+```bash
+./scripts/docker-build.sh
+```
+
+### Docker details
+
+| Port | Service |
+|------|---------|
+| 3000 | Studio UI + API |
+
+| Volume Mount | Purpose |
+|---|---|
+| `./data/assets` | Uploaded images, audio, video |
+| `./data/projects` | Saved project JSON files |
+| `./data/exports` | Rendered video output |
+
+The container runs as a non-root user (`studio`). Chromium and FFmpeg are bundled for headless rendering. 2 GB shared memory (`shm_size`) is allocated for Chromium.
 
 ## 📁 Project Structure
 
@@ -151,6 +190,7 @@ Presets automatically configure dimensions for platforms:
 ```bash
 # Development
 bun run dev                       # Start dev server with hot reload
+npm run dev                       # Alternative with npm
 
 # Build & Type Check
 bun run build                     # Compile all packages
@@ -158,7 +198,7 @@ bun run type-check                # TypeScript type validation
 
 # Testing
 bun run test                      # Run all test suites
-bun run --filter '@studio/shared-types' test    # Single package tests
+npm run test                      # Alternative with npm
 
 # Rendering
 bun run --filter '@studio/mcp-server' start     # Start MCP server (stdio)
@@ -172,7 +212,7 @@ Each documentation file covers a specific aspect:
 |----------|---------|
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, component roles, data flow |
 | [GETTING_STARTED.md](docs/GETTING_STARTED.md) | Installation, configuration, first steps |
-| [TEMPLATES.md](docs/TEMPLATES.md) | Details on all 5 templates, customization |
+| [TEMPLATES.md](docs/TEMPLATES.md) | Details on all 6 templates, customization |
 | [MCP_API.md](docs/MCP_API.md) | AI server tools, integration examples |
 | [EXPORT_FORMATS.md](docs/EXPORT_FORMATS.md) | Codec options, quality settings, rendering |
 | [DEVELOPMENT.md](docs/DEVELOPMENT.md) | Code style, adding templates, extending |
@@ -187,6 +227,7 @@ Each documentation file covers a specific aspect:
 3. **Quote Card Sequence** — Animated quote cards with transitions and background images
 4. **Social Media Reel** — Fast-paced slides with music, designed for vertical video
 5. **Product Showcase** — E-commerce product highlights with animations and CTAs
+6. **BabyLens** — Social reel for parenting apps with POV, product reveal, features, and CTA
 
 Each template is fully customizable with inputProps. See [TEMPLATES.md](docs/TEMPLATES.md) for details.
 
@@ -224,8 +265,9 @@ Test suites:
 - **template-registry**: Template registration (28 tests)
 - **renderer**: RenderQueue pipeline (14 tests)
 - **mcp-server**: Tool handlers (36 tests)
+- **studio**: API integration (38 tests)
 
-Total: **97 tests** across 4 packages. See [TESTING.md](docs/TESTING.md).
+Total: **135 tests** across 5 packages. See [TESTING.md](docs/TESTING.md).
 
 ## 📦 Dependencies
 
