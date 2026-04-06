@@ -18,8 +18,8 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@studio/shared-types": "workspace:*",
-    "@studio/remotion-compositions": "workspace:*",
+    "@studio/shared-types": "*",
+    "@studio/remotion-compositions": "*",
     "@remotion/media-utils": "^4.0.0",
     "react": "^19.0.0",
     "remotion": "^4.0.0",

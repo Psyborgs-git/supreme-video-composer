@@ -15,9 +15,9 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@studio/shared-types": "workspace:*",
-    "@studio/template-registry": "workspace:*",
-    "@studio/renderer": "workspace:*",
+    "@studio/shared-types": "*",
+    "@studio/template-registry": "*",
+    "@studio/renderer": "*",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "zod": "^3.23.0"
   },

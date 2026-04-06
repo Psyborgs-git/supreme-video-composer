@@ -11,10 +11,10 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@studio/shared-types": "workspace:*",
-    "@studio/template-registry": "workspace:*",
-    "@studio/remotion-compositions": "workspace:*",
-    "@studio/renderer": "workspace:*",
+    "@studio/shared-types": "*",
+    "@studio/template-registry": "*",
+    "@studio/remotion-compositions": "*",
+    "@studio/renderer": "*",
     "@remotion/player": "^4.0.0",
     "@remotion/media-utils": "^4.0.0",
     "hono": "^4.6.0",

@@ -16,7 +16,7 @@
     "dev": "tsc --noEmit --watch"
   },
   "dependencies": {
-    "@studio/shared-types": "workspace:*",
+    "@studio/shared-types": "*",
     "@remotion/media-utils": "^4.0.0",
     "@remotion/noise": "^4.0.0",
     "@remotion/google-fonts": "^4.0.0",
