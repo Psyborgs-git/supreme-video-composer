@@ -13,9 +13,9 @@ const CODECS: { value: VideoCodec; label: string; ext: string }[] = [
 ];
 
 const RESOLUTION_SCALES: { value: number; label: string }[] = [
-  { value: 0.5, label: "0.5× (half)" },
-  { value: 1, label: "1× (native)" },
-  { value: 2, label: "2× (double)" },
+  { value: 0.5, label: "0.5×" },
+  { value: 1, label: "1×" },
+  { value: 2, label: "2×" },
 ];
 
 const FPS_OPTIONS = [24, 25, 30, 60];
@@ -91,12 +91,17 @@ export const ExportPanel: React.FC = () => {
   const isRendering = renderStatus != null && !(TERMINAL_STATUSES as readonly string[]).includes(renderStatus);
   const progressPct = Math.round(renderProgress * 100);
 
+  const sectionLabel = "text-sm font-medium text-gray-700 dark:text-zinc-300";
+  const btnGroup = "rounded-lg px-2 sm:px-3 py-2 text-xs font-medium transition-colors";
+  const activeBtn = "bg-blue-600 text-white";
+  const inactiveBtn = "bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-700 dark:text-zinc-300";
+
   return (
     <div className="p-4 space-y-5">
       {/* ── Save Project ── */}
       {!projectId && (
         <div className="space-y-2">
-          <h3 className="text-sm font-medium text-zinc-300">Save Project</h3>
+          <h3 className={sectionLabel}>Save Project</h3>
           <div className="flex gap-2">
             <input
               type="text"
@@ -104,22 +109,22 @@ export const ExportPanel: React.FC = () => {
               onChange={(e) => setSaveName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSave()}
               placeholder="Project name…"
-              className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-blue-500"
+              className="flex-1 bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 focus:outline-none focus:border-blue-500 transition-colors"
             />
             <button
               onClick={handleSave}
               disabled={!saveName.trim() || saving}
-              className="px-3 py-2 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-40 rounded-lg text-sm font-medium transition-colors"
+              className="px-3 py-2 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 disabled:opacity-40 rounded-lg text-sm font-medium transition-colors text-gray-800 dark:text-zinc-100"
             >
               {saving ? "Saving…" : "Save"}
             </button>
           </div>
-          {saveError && <p className="text-xs text-red-400">{saveError}</p>}
+          {saveError && <p className="text-xs text-red-600 dark:text-red-400">{saveError}</p>}
         </div>
       )}
 
       {projectId && (
-        <p className="text-xs text-emerald-400 flex items-center gap-1">
+        <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
           <span>✓</span>
           <span>Project saved (id: {projectId.slice(0, 8)}…)</span>
         </p>
@@ -127,7 +132,7 @@ export const ExportPanel: React.FC = () => {
 
       {/* ── Quality ── */}
       <div className="space-y-2">
-        <h3 className="text-sm font-medium text-zinc-300">Quality</h3>
+        <h3 className={sectionLabel}>Quality</h3>
         <div className="grid grid-cols-2 gap-1.5">
           {QUALITY_OPTIONS.map((opt) => (
             <button
@@ -136,7 +141,7 @@ export const ExportPanel: React.FC = () => {
               className={`rounded-lg px-3 py-2 text-left transition-colors ${
                 qualityPreset === opt.value
                   ? "bg-blue-600 text-white"
-                  : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
+                  : `${inactiveBtn}`
               }`}
             >
               <div className="text-xs font-semibold">{opt.label}</div>
@@ -148,11 +153,11 @@ export const ExportPanel: React.FC = () => {
 
       {/* ── Codec ── */}
       <div className="space-y-2">
-        <h3 className="text-sm font-medium text-zinc-300">Format</h3>
+        <h3 className={sectionLabel}>Format</h3>
         <select
           value={exportFormat.codec}
           onChange={(e) => setCodec(e.target.value as VideoCodec)}
-          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-blue-500"
+          className="w-full bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-zinc-100 focus:outline-none focus:border-blue-500 transition-colors"
         >
           {CODECS.map((c) => (
             <option key={c.value} value={c.value}>
@@ -164,17 +169,13 @@ export const ExportPanel: React.FC = () => {
 
       {/* ── Resolution Scale ── */}
       <div className="space-y-2">
-        <h3 className="text-sm font-medium text-zinc-300">Resolution Scale</h3>
+        <h3 className={sectionLabel}>Resolution</h3>
         <div className="flex gap-1.5">
           {RESOLUTION_SCALES.map((opt) => (
             <button
               key={opt.value}
               onClick={() => setResolutionScale(opt.value)}
-              className={`flex-1 rounded-lg px-2 py-2 text-xs font-medium transition-colors ${
-                exportFormat.scale === opt.value
-                  ? "bg-blue-600 text-white"
-                  : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
-              }`}
+              className={`flex-1 ${btnGroup} ${exportFormat.scale === opt.value ? activeBtn : inactiveBtn}`}
             >
               {opt.label}
             </button>
@@ -184,17 +185,13 @@ export const ExportPanel: React.FC = () => {
 
       {/* ── FPS ── */}
       <div className="space-y-2">
-        <h3 className="text-sm font-medium text-zinc-300">Frame Rate</h3>
+        <h3 className={sectionLabel}>Frame Rate</h3>
         <div className="flex gap-1.5">
           {FPS_OPTIONS.map((fps) => (
             <button
               key={fps}
               onClick={() => setFps(fps)}
-              className={`flex-1 rounded-lg py-2 text-xs font-medium transition-colors ${
-                exportFormat.fps === fps
-                  ? "bg-blue-600 text-white"
-                  : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
-              }`}
+              className={`flex-1 ${btnGroup} ${exportFormat.fps === fps ? activeBtn : inactiveBtn}`}
             >
               {fps}
             </button>
@@ -208,7 +205,7 @@ export const ExportPanel: React.FC = () => {
           onClick={handleExport}
           disabled={!projectId}
           title={!projectId ? "Save project first" : ""}
-          className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+          className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2 text-white"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -217,11 +214,11 @@ export const ExportPanel: React.FC = () => {
         </button>
       ) : (
         <div className="space-y-2">
-          <div className="flex justify-between text-xs text-zinc-400">
+          <div className="flex justify-between text-xs text-gray-500 dark:text-zinc-400">
             <span className="capitalize">{renderStatus}…</span>
             <span>{progressPct}%</span>
           </div>
-          <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
+          <div className="w-full h-2 bg-gray-200 dark:bg-zinc-800 rounded-full overflow-hidden">
             <div
               className="h-full bg-blue-500 transition-all duration-300 rounded-full"
               style={{ width: `${progressPct}%` }}
@@ -232,36 +229,46 @@ export const ExportPanel: React.FC = () => {
 
       {/* ── Result messages ── */}
       {renderStatus === "complete" && renderOutputPath && (
-        <div className="text-xs text-emerald-400 bg-emerald-900/30 rounded-lg p-3 space-y-2">
-          <div className="break-all">✓ Done — {renderOutputPath}</div>
-          <div className="flex gap-2">
+        <div className="text-xs text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800/50 rounded-xl p-3 space-y-3">
+          <div className="flex items-start gap-2">
+            <span className="text-emerald-500 dark:text-emerald-400 mt-0.5">✓</span>
+            <span className="break-all leading-relaxed">Render complete!</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
             {renderJobId && (
               <a
                 href={`/api/renders/${renderJobId}/download`}
                 download
-                className="px-2 py-1 bg-emerald-700 hover:bg-emerald-600 text-white rounded text-xs font-medium transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition-colors"
               >
-                Download
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download File
               </a>
             )}
             <button
               onClick={resetRender}
-              className="underline opacity-70 hover:opacity-100 text-xs"
+              className="px-3 py-1.5 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 text-gray-600 dark:text-zinc-300 rounded-lg text-xs font-medium transition-colors"
             >
               Dismiss
             </button>
           </div>
+          <p className="text-[10px] text-gray-400 dark:text-zinc-500 break-all">{renderOutputPath}</p>
         </div>
       )}
       {renderStatus === "error" && renderError && (
-        <div className="text-xs text-red-400 bg-red-900/30 rounded-lg p-3">
-          ✗ {renderError}
-          <button
-            onClick={resetRender}
-            className="ml-2 underline opacity-70 hover:opacity-100"
-          >
-            Retry
-          </button>
+        <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800/50 rounded-xl p-3 flex items-start gap-2">
+          <span className="shrink-0">✗</span>
+          <div className="flex-1">
+            <p className="break-all">{renderError}</p>
+            <button
+              onClick={resetRender}
+              className="mt-2 underline opacity-70 hover:opacity-100"
+            >
+              Retry
+            </button>
+          </div>
         </div>
       )}
     </div>

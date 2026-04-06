@@ -16,7 +16,7 @@ export const PropsForm: React.FC<PropsFormProps> = ({ schema, values, onChange }
 
   if (fields.length === 0) {
     return (
-      <p className="text-sm text-zinc-500 italic">No configurable properties for this template.</p>
+      <p className="text-sm text-gray-400 dark:text-zinc-500 italic">No configurable properties for this template.</p>
     );
   }
 
@@ -24,7 +24,7 @@ export const PropsForm: React.FC<PropsFormProps> = ({ schema, values, onChange }
     <div className="flex flex-col gap-4">
       {fields.map((field) => (
         <div key={field.key}>
-          <label className="block text-xs font-medium text-zinc-400 mb-1">
+          <label className="block text-xs font-medium text-gray-500 dark:text-zinc-400 mb-1">
             {formatLabel(field.key)}
           </label>
           {renderField(field, values[field.key], (val) => onChange(field.key, val))}
@@ -120,7 +120,7 @@ function renderField(
   onChange: (value: unknown) => void,
 ): React.ReactNode {
   const inputClasses =
-    "w-full rounded-lg bg-zinc-800 border border-zinc-700 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent";
+    "w-full rounded-lg bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 px-3 py-2 text-sm text-gray-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-colors";
 
   switch (field.type) {
     case "string":
@@ -148,11 +148,11 @@ function renderField(
         <label className="flex items-center gap-2 cursor-pointer">
           <input
             type="checkbox"
-            className="rounded bg-zinc-800 border-zinc-700 text-blue-600 focus:ring-blue-600"
+            className="rounded bg-white dark:bg-zinc-800 border-gray-300 dark:border-zinc-700 text-blue-600 focus:ring-blue-600"
             checked={(value as boolean) ?? false}
             onChange={(e) => onChange(e.target.checked)}
           />
-          <span className="text-sm text-zinc-300">{value ? "Enabled" : "Disabled"}</span>
+          <span className="text-sm text-gray-700 dark:text-zinc-300">{value ? "Enabled" : "Disabled"}</span>
         </label>
       );
 
@@ -161,7 +161,7 @@ function renderField(
         <div className="flex items-center gap-2">
           <input
             type="color"
-            className="w-10 h-10 rounded border border-zinc-700 cursor-pointer bg-transparent"
+            className="w-10 h-10 rounded border border-gray-300 dark:border-zinc-700 cursor-pointer bg-transparent"
             value={(value as string) ?? "#000000"}
             onChange={(e) => onChange(e.target.value)}
           />
