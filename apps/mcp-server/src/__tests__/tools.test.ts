@@ -42,7 +42,7 @@ describe("MCP: list_templates", () => {
     expect(result.isError).toBeUndefined();
     const templates = parseText(result);
     expect(Array.isArray(templates)).toBe(true);
-    expect(templates).toHaveLength(6);
+    expect(templates).toHaveLength(8);
   });
 
   it("each template has required fields", async () => {
@@ -917,5 +917,159 @@ describe("MCP: register_asset", () => {
     expect(result.isError).toBe(true);
     const err = parseText(result);
     expect(err.error.code).toBe("INVALID_ASSET_TYPE");
+  });
+});
+
+// ─── split_transcript_to_captions ─────────────────────────────────
+
+import {
+  handleSplitTranscriptToCaptions,
+  handleGenerateVideoScript,
+  handleCreateSceneSequence,
+  handleUpdateScene,
+  handleValidateTemplate,
+} from "../handlers";
+
+describe("MCP: split_transcript_to_captions", () => {
+  it("splits a transcript into caption chunks", async () => {
+    const result = await handleSplitTranscriptToCaptions({
+      transcript: "Hello world this is a test of caption splitting",
+      wordsPerCaption: 3,
+      totalDurationFrames: 300,
+    });
+    expect(result.isError).toBeUndefined();
+    const data = parseText(result);
+    expect(Array.isArray(data.captions)).toBe(true);
+    expect(data.captions.length).toBeGreaterThan(0);
+    for (const c of data.captions) {
+      expect(c).toHaveProperty("text");
+      expect(c).toHaveProperty("startFrame");
+      expect(c).toHaveProperty("endFrame");
+      expect(c.startFrame).toBeGreaterThanOrEqual(0);
+      expect(c.endFrame).toBeGreaterThanOrEqual(c.startFrame);
+    }
+  });
+
+  it("rejects empty transcript", async () => {
+    const result = await handleSplitTranscriptToCaptions({ transcript: "" });
+    expect(result.isError).toBe(true);
+    const err = parseText(result);
+    expect(err.error.code).toBe("VALIDATION_ERROR");
+  });
+});
+
+// ─── generate_video_script ────────────────────────────────────────
+
+describe("MCP: generate_video_script", () => {
+  it("generates scenes from a prompt", async () => {
+    const result = await handleGenerateVideoScript({
+      prompt: "A dog runs through a park. It finds a ball. It brings the ball back.",
+      sceneCount: 3,
+    });
+    expect(result.isError).toBeUndefined();
+    const data = parseText(result);
+    expect(data.scenes).toHaveLength(3);
+    for (const s of data.scenes) {
+      expect(s).toHaveProperty("title");
+      expect(s).toHaveProperty("body");
+      expect(s).toHaveProperty("durationFrames");
+    }
+  });
+
+  it("rejects empty prompt", async () => {
+    const result = await handleGenerateVideoScript({ prompt: "" });
+    expect(result.isError).toBe(true);
+  });
+});
+
+// ─── create_scene_sequence ────────────────────────────────────────
+
+describe("MCP: create_scene_sequence", () => {
+  it("creates a project from scenes", async () => {
+    const result = await handleCreateSceneSequence({
+      templateId: "prompt-to-video",
+      name: "Test Scene Sequence",
+      scenes: [
+        { title: "Scene 1", body: "First scene" },
+        { title: "Scene 2", body: "Second scene" },
+      ],
+    });
+    expect(result.isError).toBeUndefined();
+    const project = parseText(result);
+    expect(project.templateId).toBe("prompt-to-video");
+    expect(project.name).toBe("Test Scene Sequence");
+  });
+
+  it("rejects wrong template ID", async () => {
+    const result = await handleCreateSceneSequence({
+      templateId: "wrong-template",
+      name: "Test",
+      scenes: [{ title: "S1", body: "text" }],
+    });
+    expect(result.isError).toBe(true);
+    const err = parseText(result);
+    expect(err.error.code).toBe("INVALID_TEMPLATE");
+  });
+});
+
+// ─── update_scene ─────────────────────────────────────────────────
+
+describe("MCP: update_scene", () => {
+  it("updates a specific scene in a project", async () => {
+    const createResult = await handleCreateSceneSequence({
+      templateId: "prompt-to-video",
+      name: "Update Test",
+      scenes: [
+        { title: "Scene 1", body: "Original text" },
+        { title: "Scene 2", body: "Second scene" },
+      ],
+    });
+    const project = parseText(createResult);
+
+    const updateResult = await handleUpdateScene({
+      projectId: project.id,
+      sceneIndex: 0,
+      sceneUpdates: { body: "Updated text" },
+    });
+    expect(updateResult.isError).toBeUndefined();
+    const updated = parseText(updateResult);
+    expect((updated.inputProps.scenes as any[])[0].body).toBe("Updated text");
+  });
+
+  it("rejects invalid scene index", async () => {
+    const createResult = await handleCreateSceneSequence({
+      templateId: "prompt-to-video",
+      name: "Index Test",
+      scenes: [{ title: "S1", body: "text" }],
+    });
+    const project = parseText(createResult);
+
+    const result = await handleUpdateScene({
+      projectId: project.id,
+      sceneIndex: 99,
+      sceneUpdates: { body: "nope" },
+    });
+    expect(result.isError).toBe(true);
+    const err = parseText(result);
+    expect(err.error.code).toBe("INVALID_SCENE_INDEX");
+  });
+});
+
+// ─── validate_template ────────────────────────────────────────────
+
+describe("MCP: validate_template", () => {
+  it("validates a built-in template with defaults", async () => {
+    const result = await handleValidateTemplate({
+      templateId: "tiktok-caption",
+    });
+    expect(result.isError).toBeUndefined();
+    const data = parseText(result);
+    expect(data.valid).toBe(true);
+    expect(data.frameCount).toBeGreaterThan(0);
+  });
+
+  it("returns error for unknown template", async () => {
+    const result = await handleValidateTemplate({ templateId: "no-such-template" });
+    expect(result.isError).toBe(true);
   });
 });

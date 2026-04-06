@@ -26,6 +26,15 @@ import {
   handleGetAsset,
   handleDeleteAsset,
   handleRegisterAsset,
+  handleSplitTranscriptToCaptions,
+  handleGenerateVideoScript,
+  handleCreateSceneSequence,
+  handleUpdateScene,
+  handleCreateTemplate,
+  handleUpdateTemplateSchema,
+  handleGetTemplateScaffold,
+  handleUpdateTemplateComposition,
+  handleValidateTemplate,
 } from "./handlers.js";
 
 const aspectRatioEnum = z.enum([
@@ -196,6 +205,136 @@ server.tool(
     sizeBytes: z.number().int().min(0).describe("File size in bytes"),
   },
   handleRegisterAsset,
+);
+
+// ─── TikTok Caption tools ─────────────────────────────────────────────────
+
+server.tool(
+  "split_transcript_to_captions",
+  "Split raw transcript text into timed caption chunks for the TikTok Caption template",
+  {
+    transcript: z.string().describe("The raw transcript text to split"),
+    wordsPerCaption: z.number().int().min(1).max(20).optional().describe("Max words per caption chunk (default: 4)"),
+    totalDurationFrames: z.number().int().min(1).optional().describe("Total video duration in frames (default: 300)"),
+    fps: z.number().optional().describe("Frames per second (default: 30)"),
+  },
+  handleSplitTranscriptToCaptions,
+);
+
+// ─── Prompt-to-Video tools ────────────────────────────────────────────────
+
+server.tool(
+  "generate_video_script",
+  "Generate a structured scene array from a text prompt for the Prompt-to-Video template",
+  {
+    prompt: z.string().describe("Describe your video in plain English"),
+    sceneCount: z.number().int().min(1).max(20).optional().describe("Number of scenes to generate (default: 5)"),
+    style: z.string().optional().describe("Visual style hint (e.g. 'fast', 'cinematic', 'minimal')"),
+  },
+  handleGenerateVideoScript,
+);
+
+server.tool(
+  "create_scene_sequence",
+  "Create a project from a scene array for the Prompt-to-Video template",
+  {
+    templateId: z.literal("prompt-to-video").describe("Must be 'prompt-to-video'"),
+    name: z.string().describe("Project name"),
+    scenes: z.array(z.object({
+      title: z.string(),
+      body: z.string(),
+      imageUrl: z.string().optional(),
+      durationFrames: z.number().optional(),
+      enterTransition: z.string().optional(),
+      exitTransition: z.string().optional(),
+      voiceoverText: z.string().optional(),
+    })).describe("Array of scene objects"),
+    aspectRatio: aspectRatioEnum.optional().describe("Aspect ratio preset"),
+  },
+  handleCreateSceneSequence,
+);
+
+server.tool(
+  "update_scene",
+  "Update a single scene in a Prompt-to-Video project",
+  {
+    projectId: z.string().describe("The project ID"),
+    sceneIndex: z.number().int().min(0).describe("Zero-based scene index"),
+    sceneUpdates: z.record(z.unknown()).describe("Partial scene updates to merge"),
+  },
+  handleUpdateScene,
+);
+
+// ─── Template Creator tools ───────────────────────────────────────────────
+
+const fieldSchemaZ = z.object({
+  key: z.string().describe("camelCase field identifier"),
+  type: z.enum([
+    "string", "number", "boolean", "color",
+    "asset-image", "asset-audio", "asset-video",
+    "string-array", "asset-image-array", "scene-array",
+  ]).describe("Field type"),
+  label: z.string().describe("Human-readable label"),
+  description: z.string().describe("Helper text"),
+  required: z.boolean().describe("Whether the field is required"),
+  defaultValue: z.unknown().optional().describe("Default value"),
+  validation: z.record(z.unknown()).optional().describe("Validation rules (min, max, etc.)"),
+});
+
+server.tool(
+  "create_template",
+  "Create a new template with scaffold composition and register it",
+  {
+    name: z.string().describe("Template name"),
+    description: z.string().describe("Template description"),
+    category: z.string().describe("Category (storytelling, music-reactive, social, product, typography, custom)"),
+    fields: z.array(fieldSchemaZ).describe("Field definitions for the template"),
+    supportedAspectRatios: z.array(z.string()).describe("Supported aspect ratios"),
+    defaultAspectRatio: z.string().describe("Default aspect ratio"),
+    defaultDurationFrames: z.number().int().min(1).describe("Default duration in frames"),
+    defaultFps: z.number().describe("Default FPS (24, 25, 30, or 60)"),
+  },
+  handleCreateTemplate,
+);
+
+server.tool(
+  "update_template_schema",
+  "Add or remove fields from a template schema",
+  {
+    templateId: z.string().describe("The template ID"),
+    addFields: z.array(fieldSchemaZ).optional().describe("Fields to add"),
+    removeFieldKeys: z.array(z.string()).optional().describe("Field keys to remove"),
+  },
+  handleUpdateTemplateSchema,
+);
+
+server.tool(
+  "get_template_scaffold",
+  "Get the generated composition and schema code for a template",
+  {
+    templateId: z.string().describe("The template ID"),
+  },
+  handleGetTemplateScaffold,
+);
+
+server.tool(
+  "update_template_composition",
+  "Write new composition code for a template",
+  {
+    templateId: z.string().describe("The template ID"),
+    compositionCode: z.string().describe("The new composition TypeScript code"),
+  },
+  handleUpdateTemplateComposition,
+);
+
+server.tool(
+  "validate_template",
+  "Validate a template by checking its schema against sample props",
+  {
+    templateId: z.string().describe("The template ID"),
+    sampleInputProps: z.record(z.unknown()).optional().describe("Sample input props to validate"),
+  },
+  handleValidateTemplate,
 );
 
 async function main() {

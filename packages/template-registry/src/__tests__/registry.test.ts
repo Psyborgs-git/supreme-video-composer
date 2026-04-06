@@ -10,9 +10,9 @@ import {
 // (the templates.ts file registers all 6 templates)
 
 describe("Template Registry — template count", () => {
-  it("has exactly 6 registered templates", () => {
+  it("has exactly 8 registered templates", () => {
     const templates = getAllTemplates();
-    expect(templates).toHaveLength(6);
+    expect(templates).toHaveLength(8);
   });
 
   it("contains all expected template IDs", () => {
@@ -23,6 +23,8 @@ describe("Template Registry — template count", () => {
     expect(ids).toContain("social-media-reel");
     expect(ids).toContain("product-showcase");
     expect(ids).toContain("babylens");
+    expect(ids).toContain("tiktok-caption");
+    expect(ids).toContain("prompt-to-video");
   });
 });
 
