@@ -6,6 +6,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { Editor } from "./pages/Editor";
 import { Projects } from "./pages/Projects";
 import { Assets } from "./pages/Assets";
+import { TemplateCreator } from "./pages/TemplateCreator";
 import "./index.css";
 
 // Apply saved theme before first paint to prevent flash
@@ -21,6 +22,8 @@ createRoot(document.getElementById("root")!).render(
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/templates/new" element={<TemplateCreator />} />
+          <Route path="/templates/:id/edit" element={<TemplateCreator />} />
           <Route path="/editor/:templateId" element={<Editor />} />
           <Route path="/editor/:templateId/:projectId" element={<Editor />} />
           <Route path="/projects" element={<Projects />} />

@@ -33,6 +33,7 @@ export const Layout: React.FC = () => {
 
   const navLinks = [
     { to: "/", label: "Templates" },
+    { to: "/templates/new", label: "Create Template" },
     { to: "/projects", label: "Projects" },
     { to: "/assets", label: "Assets" },
   ];
