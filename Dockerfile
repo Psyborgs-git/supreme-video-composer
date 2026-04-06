@@ -99,6 +99,8 @@ EXPOSE 3000
 # Environment
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV ASSETS_DIR=/data/assets
+ENV PROJECTS_DIR=/data/projects
 ENV EXPORTS_DIR=/data/exports
 ENV HOME=/home/studio
 

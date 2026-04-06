@@ -1,12 +1,19 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
   handleListTemplates,
+  handleGetTemplate,
   handleCreateProject,
   handleUpdateProject,
   handleGetProject,
   handleListProjects,
+  handleDeleteProject,
+  handleDuplicateProject,
   handleRenderProject,
   handleGetRenderStatus,
+  handleCancelRender,
+  handleListRenders,
+  handleListAspectRatios,
+  handlePreviewUrl,
   handleExportFormats,
   clearStores,
   projectStore,
@@ -69,7 +76,7 @@ describe("MCP: create_project", () => {
     expect(project.name).toBe("My Timeline");
     expect(project.templateId).toBe("history-storyline");
     expect(project.version).toBe(1);
-    expect(project.aspectRatio.preset).toBe("16:9");
+    expect(project.aspectRatio.preset).toBe("youtube");
     expect(project.aspectRatio.width).toBe(1920);
     expect(project.aspectRatio.height).toBe(1080);
     expect(project.exportFormat.codec).toBe("h264");
@@ -88,10 +95,10 @@ describe("MCP: create_project", () => {
     const result = await handleCreateProject({
       templateId: "social-media-reel",
       name: "Reel",
-      aspectRatio: "9:16",
+      aspectRatio: "instagram-reel",
     });
     const project = parseText(result);
-    expect(project.aspectRatio.preset).toBe("9:16");
+    expect(project.aspectRatio.preset).toBe("instagram-reel");
     expect(project.aspectRatio.width).toBe(1080);
     expect(project.aspectRatio.height).toBe(1920);
   });
@@ -168,9 +175,9 @@ describe("MCP: update_project", () => {
       await handleCreateProject({ templateId: "social-media-reel", name: "Reel" }),
     );
     const updated = parseText(
-      await handleUpdateProject({ projectId: created.id, aspectRatio: "1:1" }),
+      await handleUpdateProject({ projectId: created.id, aspectRatio: "instagram-post" }),
     );
-    expect(updated.aspectRatio.preset).toBe("1:1");
+    expect(updated.aspectRatio.preset).toBe("instagram-post");
     expect(updated.aspectRatio.width).toBe(1080);
     expect(updated.aspectRatio.height).toBe(1080);
   });
@@ -271,7 +278,7 @@ describe("MCP: render_project", () => {
     expect(job.id).toBeTruthy();
     expect(job.status).toBe("queued");
     expect(job.projectId).toBe(created.id);
-    expect(job.templateId).toBe("history-storyline");
+    expect(job.templateId).toBe("HistoryStoryline"); // compositionId, not template slug
     expect(job.outputPath).toBeNull();
     expect(job.error).toBeNull();
   });
@@ -401,11 +408,11 @@ describe("MCP: full project lifecycle", () => {
     const createResult = await handleCreateProject({
       templateId: "product-showcase",
       name: "iPhone Launch",
-      aspectRatio: "4:5",
+      aspectRatio: "pinterest",
     });
     expect(createResult.isError).toBeUndefined();
     const project = parseText(createResult);
-    expect(project.aspectRatio.preset).toBe("4:5");
+    expect(project.aspectRatio.preset).toBe("pinterest");
 
     // 2. Update
     const updateResult = await handleUpdateProject({
@@ -444,5 +451,231 @@ describe("MCP: full project lifecycle", () => {
     const status = parseText(statusResult);
     expect(status.id).toBe(job.id);
     expect(status.projectId).toBe(project.id);
+  });
+});
+
+// ─── get_template ────────────────────────────────────────────────────
+
+describe("MCP: get_template", () => {
+  it("returns a known template", async () => {
+    const result = await handleGetTemplate({ templateId: "history-storyline" });
+    expect(result.isError).toBeUndefined();
+    const t = parseText(result);
+    expect(t.id).toBe("history-storyline");
+    expect(t.compositionId).toBeTruthy();
+  });
+
+  it("returns structured error for unknown template", async () => {
+    const result = await handleGetTemplate({ templateId: "ghost" });
+    expect(result.isError).toBe(true);
+    const err = parseText(result);
+    expect(err.error.code).toBe("TEMPLATE_NOT_FOUND");
+    expect(err.error.message).toContain("ghost");
+  });
+});
+
+// ─── delete_project ──────────────────────────────────────────────────
+
+describe("MCP: delete_project", () => {
+  it("deletes an existing project", async () => {
+    const { id } = parseText(
+      await handleCreateProject({ templateId: "product-showcase", name: "ToDelete" }),
+    );
+    const result = await handleDeleteProject({ projectId: id });
+    expect(result.isError).toBeUndefined();
+    expect(parseText(result).deleted).toBe(true);
+    expect(projectStore.has(id)).toBe(false);
+  });
+
+  it("returns structured error for unknown project", async () => {
+    const result = await handleDeleteProject({ projectId: "ghost" });
+    expect(result.isError).toBe(true);
+    const err = parseText(result);
+    expect(err.error.code).toBe("PROJECT_NOT_FOUND");
+  });
+
+  it("blocks deletion when there is an active render", async () => {
+    const project = parseText(
+      await handleCreateProject({ templateId: "product-showcase", name: "Active" }),
+    );
+    // Queue a render job manually to simulate active render
+    const job = parseText(await handleRenderProject({ projectId: project.id }));
+    expect(job.status).toBe("queued");
+
+    const result = await handleDeleteProject({ projectId: project.id });
+    expect(result.isError).toBe(true);
+    const err = parseText(result);
+    expect(err.error.code).toBe("PROJECT_HAS_ACTIVE_RENDER");
+  });
+});
+
+// ─── duplicate_project ────────────────────────────────────────────────
+
+describe("MCP: duplicate_project", () => {
+  it("creates an independent copy with a new ID", async () => {
+    const original = parseText(
+      await handleCreateProject({ templateId: "social-media-reel", name: "Original" }),
+    );
+    const result = await handleDuplicateProject({ projectId: original.id });
+    expect(result.isError).toBeUndefined();
+    const copy = parseText(result);
+    expect(copy.id).not.toBe(original.id);
+    expect(copy.templateId).toBe(original.templateId);
+    expect(copy.name).toContain("copy");
+  });
+
+  it("respects custom newName", async () => {
+    const original = parseText(
+      await handleCreateProject({ templateId: "product-showcase", name: "Base" }),
+    );
+    const copy = parseText(
+      await handleDuplicateProject({ projectId: original.id, newName: "Fork" }),
+    );
+    expect(copy.name).toBe("Fork");
+  });
+
+  it("returns structured error for unknown project", async () => {
+    const result = await handleDuplicateProject({ projectId: "ghost" });
+    expect(result.isError).toBe(true);
+    const err = parseText(result);
+    expect(err.error.code).toBe("PROJECT_NOT_FOUND");
+  });
+});
+
+// ─── cancel_render ────────────────────────────────────────────────────
+
+describe("MCP: cancel_render", () => {
+  it("cancels a queued job", async () => {
+    const project = parseText(
+      await handleCreateProject({ templateId: "history-storyline", name: "C" }),
+    );
+    const job = parseText(await handleRenderProject({ projectId: project.id }));
+    const result = await handleCancelRender({ jobId: job.id });
+    expect(result.isError).toBeUndefined();
+    const cancelled = renderJobStore.get(job.id)!;
+    expect(cancelled.status).toBe("cancelled");
+  });
+
+  it("returns structured error for unknown job", async () => {
+    const result = await handleCancelRender({ jobId: "ghost" });
+    expect(result.isError).toBe(true);
+    const err = parseText(result);
+    expect(err.error.code).toBe("JOB_NOT_FOUND");
+  });
+});
+
+// ─── list_renders ────────────────────────────────────────────────────
+
+describe("MCP: list_renders", () => {
+  it("returns all jobs when no filter", async () => {
+    const project = parseText(
+      await handleCreateProject({ templateId: "history-storyline", name: "L" }),
+    );
+    await handleRenderProject({ projectId: project.id });
+    await handleRenderProject({ projectId: project.id });
+    const result = await handleListRenders();
+    const { jobs } = parseText(result);
+    expect(jobs).toHaveLength(2);
+  });
+
+  it("filters by projectId", async () => {
+    const p1 = parseText(
+      await handleCreateProject({ templateId: "history-storyline", name: "P1" }),
+    );
+    const p2 = parseText(
+      await handleCreateProject({ templateId: "product-showcase", name: "P2" }),
+    );
+    await handleRenderProject({ projectId: p1.id });
+    await handleRenderProject({ projectId: p2.id });
+    const result = await handleListRenders({ projectId: p1.id });
+    const { jobs } = parseText(result);
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0].projectId).toBe(p1.id);
+  });
+
+  it("filters by status", async () => {
+    const project = parseText(
+      await handleCreateProject({ templateId: "history-storyline", name: "L" }),
+    );
+    const job = parseText(await handleRenderProject({ projectId: project.id }));
+    await handleCancelRender({ jobId: job.id });
+    const queued = parseText(await handleListRenders({ status: "queued" }));
+    const cancelled = parseText(await handleListRenders({ status: "cancelled" }));
+    expect(queued.jobs).toHaveLength(0);
+    expect(cancelled.jobs).toHaveLength(1);
+  });
+});
+
+// ─── list_aspect_ratios ──────────────────────────────────────────────
+
+describe("MCP: list_aspect_ratios", () => {
+  it("returns a presets array", async () => {
+    const result = await handleListAspectRatios();
+    expect(result.isError).toBeUndefined();
+    const { presets } = parseText(result);
+    expect(Array.isArray(presets)).toBe(true);
+    expect(presets.length).toBeGreaterThan(0);
+  });
+
+  it("contains 16:9 with correct dimensions", async () => {
+    const { presets } = parseText(await handleListAspectRatios());
+    const widescreen = presets.find((p: any) => p.id === "youtube");
+    expect(widescreen).toBeDefined();
+    expect(widescreen.width).toBe(1920);
+    expect(widescreen.height).toBe(1080);
+  });
+
+  it("contains 9:16 vertical format", async () => {
+    const { presets } = parseText(await handleListAspectRatios());
+    const vertical = presets.find((p: any) => p.id === "instagram-reel");
+    expect(vertical).toBeDefined();
+    expect(vertical.width).toBe(1080);
+    expect(vertical.height).toBe(1920);
+  });
+});
+
+// ─── preview_url ─────────────────────────────────────────────────────
+
+describe("MCP: preview_url", () => {
+  it("returns a URL for a known project", async () => {
+    const project = parseText(
+      await handleCreateProject({ templateId: "history-storyline", name: "Preview" }),
+    );
+    const result = await handlePreviewUrl({ projectId: project.id });
+    expect(result.isError).toBeUndefined();
+    const { url } = parseText(result);
+    expect(url).toContain(project.id);
+    expect(url).toContain("localhost");
+  });
+
+  it("returns structured error for unknown project", async () => {
+    const result = await handlePreviewUrl({ projectId: "ghost" });
+    expect(result.isError).toBe(true);
+    const err = parseText(result);
+    expect(err.error.code).toBe("PROJECT_NOT_FOUND");
+  });
+});
+
+// ─── Structured error contract ───────────────────────────────────────
+
+describe("MCP: error contract", () => {
+  it("all errors are { error: { code, message } } JSON", async () => {
+    const results = await Promise.all([
+      handleGetTemplate({ templateId: "nope" }),
+      handleGetProject({ projectId: "nope" }),
+      handleDeleteProject({ projectId: "nope" }),
+      handleDuplicateProject({ projectId: "nope" }),
+      handleRenderProject({ projectId: "nope" }),
+      handleGetRenderStatus({ jobId: "nope" }),
+      handleCancelRender({ jobId: "nope" }),
+      handlePreviewUrl({ projectId: "nope" }),
+    ]);
+    for (const r of results) {
+      expect(r.isError).toBe(true);
+      const parsed = JSON.parse(r.content[0].text);
+      expect(parsed.error).toBeDefined();
+      expect(typeof parsed.error.code).toBe("string");
+      expect(typeof parsed.error.message).toBe("string");
+    }
   });
 });

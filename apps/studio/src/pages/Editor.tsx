@@ -7,6 +7,7 @@ import { useEditorStore } from "@/stores/editorStore";
 import { PropsForm } from "@/components/PropsForm";
 import { AspectRatioSelector } from "@/components/AspectRatioSelector";
 import { ExportPanel } from "@/components/ExportPanel";
+import { ASPECT_RATIO_PRESETS } from "@studio/shared-types";
 import type { AspectRatioPreset } from "@studio/shared-types";
 
 export const Editor: React.FC = () => {
@@ -66,6 +67,9 @@ export const Editor: React.FC = () => {
   }
 
   const { width, height } = aspectRatio;
+  const aspectRatioLabel =
+    ASPECT_RATIO_PRESETS[aspectRatio.preset as keyof typeof ASPECT_RATIO_PRESETS]?.label ??
+    aspectRatio.preset;
   const maxPlayerWidth = 800;
   const playerScale = Math.min(1, maxPlayerWidth / width);
   const playerWidth = width * playerScale;
@@ -76,7 +80,7 @@ export const Editor: React.FC = () => {
       {/* Left: Preview */}
       <div className="flex-1 flex flex-col items-center justify-center bg-zinc-950 p-6 overflow-auto">
         <div className="mb-4 text-sm text-zinc-500">
-          {width} × {height} · {aspectRatio.preset}
+          {width} × {height} · {aspectRatioLabel}
         </div>
 
         <Player

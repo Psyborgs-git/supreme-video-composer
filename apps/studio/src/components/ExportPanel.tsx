@@ -5,11 +5,20 @@ import type { VideoCodec, QualityPreset } from "@studio/shared-types";
 const CODECS: { value: VideoCodec; label: string; ext: string }[] = [
   { value: "h264", label: "H.264 (MP4)", ext: ".mp4" },
   { value: "h265", label: "H.265 (MP4)", ext: ".mp4" },
+  { value: "vp8", label: "VP8 (WebM)", ext: ".webm" },
   { value: "vp9", label: "VP9 (WebM)", ext: ".webm" },
   { value: "av1", label: "AV1 (WebM)", ext: ".webm" },
   { value: "prores", label: "ProRes (MOV)", ext: ".mov" },
   { value: "gif", label: "GIF", ext: ".gif" },
 ];
+
+const RESOLUTION_SCALES: { value: number; label: string }[] = [
+  { value: 0.5, label: "0.5× (half)" },
+  { value: 1, label: "1× (native)" },
+  { value: 2, label: "2× (double)" },
+];
+
+const FPS_OPTIONS = [24, 25, 30, 60];
 
 const QUALITY_OPTIONS: { value: QualityPreset; label: string; description: string }[] = [
   { value: "draft", label: "Draft", description: "Fast, larger file" },
@@ -29,8 +38,11 @@ export const ExportPanel: React.FC = () => {
     renderProgress,
     renderOutputPath,
     renderError,
+    renderJobId,
     setQualityPreset,
     setCodec,
+    setResolutionScale,
+    setFps,
     saveProject,
     startRender,
     pollRenderStatus,
@@ -150,6 +162,46 @@ export const ExportPanel: React.FC = () => {
         </select>
       </div>
 
+      {/* ── Resolution Scale ── */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-medium text-zinc-300">Resolution Scale</h3>
+        <div className="flex gap-1.5">
+          {RESOLUTION_SCALES.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setResolutionScale(opt.value)}
+              className={`flex-1 rounded-lg px-2 py-2 text-xs font-medium transition-colors ${
+                exportFormat.scale === opt.value
+                  ? "bg-blue-600 text-white"
+                  : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── FPS ── */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-medium text-zinc-300">Frame Rate</h3>
+        <div className="flex gap-1.5">
+          {FPS_OPTIONS.map((fps) => (
+            <button
+              key={fps}
+              onClick={() => setFps(fps)}
+              className={`flex-1 rounded-lg py-2 text-xs font-medium transition-colors ${
+                exportFormat.fps === fps
+                  ? "bg-blue-600 text-white"
+                  : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
+              }`}
+            >
+              {fps}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* ── Export button / progress ── */}
       {!renderStatus || renderStatus === "complete" || renderStatus === "error" || renderStatus === "cancelled" ? (
         <button
@@ -180,14 +232,25 @@ export const ExportPanel: React.FC = () => {
 
       {/* ── Result messages ── */}
       {renderStatus === "complete" && renderOutputPath && (
-        <div className="text-xs text-emerald-400 bg-emerald-900/30 rounded-lg p-3 break-all">
-          ✓ Done — {renderOutputPath}
-          <button
-            onClick={resetRender}
-            className="ml-2 underline opacity-70 hover:opacity-100"
-          >
-            Dismiss
-          </button>
+        <div className="text-xs text-emerald-400 bg-emerald-900/30 rounded-lg p-3 space-y-2">
+          <div className="break-all">✓ Done — {renderOutputPath}</div>
+          <div className="flex gap-2">
+            {renderJobId && (
+              <a
+                href={`/api/renders/${renderJobId}/download`}
+                download
+                className="px-2 py-1 bg-emerald-700 hover:bg-emerald-600 text-white rounded text-xs font-medium transition-colors"
+              >
+                Download
+              </a>
+            )}
+            <button
+              onClick={resetRender}
+              className="underline opacity-70 hover:opacity-100 text-xs"
+            >
+              Dismiss
+            </button>
+          </div>
         </div>
       )}
       {renderStatus === "error" && renderError && (

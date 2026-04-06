@@ -6,6 +6,10 @@ import {
   updateTemplateManifest,
 } from "@studio/template-registry";
 import type { RegisteredTemplate } from "@studio/template-registry";
+import {
+  ASPECT_RATIO_PRESETS,
+  DEFAULT_ASPECT_RATIO_PRESET,
+} from "@studio/shared-types";
 import type { AspectRatioPreset } from "@studio/shared-types";
 import { TemplateThumbnail } from "@/components/TemplateThumbnail";
 import { PropsForm } from "@/components/PropsForm";
@@ -24,7 +28,7 @@ export const Dashboard: React.FC = () => {
   const [selectedTemplate, setSelectedTemplate] = useState<RegisteredTemplate | null>(null);
   const [videoName, setVideoName] = useState("");
   const [videoProps, setVideoProps] = useState<Record<string, unknown>>({});
-  const [videoAspectRatio, setVideoAspectRatio] = useState<AspectRatioPreset>("16:9");
+  const [videoAspectRatio, setVideoAspectRatio] = useState<AspectRatioPreset>(DEFAULT_ASPECT_RATIO_PRESET);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
@@ -52,7 +56,7 @@ export const Dashboard: React.FC = () => {
     setSelectedTemplate(template);
     setVideoName("");
     setVideoProps({ ...template.manifest.defaultProps });
-    const firstRatio = (template.manifest.supportedAspectRatios[0] ?? "16:9") as AspectRatioPreset;
+    const firstRatio = (template.manifest.supportedAspectRatios[0] ?? DEFAULT_ASPECT_RATIO_PRESET) as AspectRatioPreset;
     setVideoAspectRatio(firstRatio);
     setCreateError(null);
   };
@@ -216,7 +220,11 @@ export const Dashboard: React.FC = () => {
                   ))}
                 </div>
                 <div className="mt-3 flex items-center justify-between text-xs text-zinc-500">
-                  <span>{template.manifest.supportedAspectRatios.join(" · ")}</span>
+                  <span>
+                    {template.manifest.supportedAspectRatios
+                      .map((preset) => ASPECT_RATIO_PRESETS[preset as keyof typeof ASPECT_RATIO_PRESETS]?.label ?? preset)
+                      .join(" · ")}
+                  </span>
                   <span>
                     {(template.manifest.defaultDurationInFrames / template.manifest.defaultFps).toFixed(1)}s
                     &nbsp;·&nbsp;{template.manifest.defaultFps}fps

@@ -18,9 +18,13 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { RenderQueue } from "@studio/renderer";
 import type { RenderJob, RenderProgress } from "@studio/shared-types";
 import { createApp } from "../api";
+import type { StorageConfig } from "../storage";
 
 // ─── Test helpers ─────────────────────────────────────────────────────────────
 
@@ -126,6 +130,14 @@ async function pollStatus(app: ReturnType<typeof createApp>["app"], jobId: strin
 /** Wait a number of milliseconds (use sparingly — prefer event-based sync). */
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+function makeStorageConfig(): StorageConfig {
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), "studio-api-"));
+  return {
+    assetsDir: path.join(rootDir, "assets"),
+    projectsDir: path.join(rootDir, "projects"),
+  };
+}
+
 // ─── Template endpoint ────────────────────────────────────────────────────────
 
 describe("GET /api/templates", () => {
@@ -213,7 +225,7 @@ describe("POST /api/projects", () => {
     expect(project.id).toBeTruthy();
     expect(project.name).toBe("My Timeline");
     expect(project.templateId).toBe("history-storyline");
-    expect(project.aspectRatio.preset).toBe("16:9");
+    expect(project.aspectRatio.preset).toBe("youtube");
     expect(project.aspectRatio.width).toBe(1920);
     expect(project.aspectRatio.height).toBe(1080);
     expect(project.exportFormat.codec).toBe("h264");
@@ -222,9 +234,9 @@ describe("POST /api/projects", () => {
 
   it("uses the specified aspectRatio to set dimensions", async () => {
     const { app } = createApp(new RenderQueue());
-    const project = await createProject(app, "Vertical", "history-storyline", "9:16");
+    const project = await createProject(app, "Vertical", "history-storyline", "instagram-reel");
 
-    expect(project.aspectRatio.preset).toBe("9:16");
+    expect(project.aspectRatio.preset).toBe("instagram-reel");
     expect(project.aspectRatio.width).toBe(1080);
     expect(project.aspectRatio.height).toBe(1920);
   });
@@ -334,11 +346,11 @@ describe("PATCH /api/projects/:id", () => {
     const res = await app.request(`/api/projects/${project.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ aspectRatio: "1:1" }),
+      body: JSON.stringify({ aspectRatio: "instagram-post" }),
     });
 
     const updated = await res.json();
-    expect(updated.aspectRatio.preset).toBe("1:1");
+    expect(updated.aspectRatio.preset).toBe("instagram-post");
     expect(updated.aspectRatio.width).toBe(1080);
     expect(updated.aspectRatio.height).toBe(1080);
   });
@@ -371,6 +383,136 @@ describe("DELETE /api/projects/:id", () => {
     const { app } = createApp(new RenderQueue());
     const res = await app.request("/api/projects/missing", { method: "DELETE" });
     expect(res.status).toBe(404);
+  });
+
+  it("returns 409 when project has an active render", async () => {
+    const q = new RenderQueue();
+    const ctrl = makeControlledRender();
+    q.setRenderFunction(ctrl.fn);
+    const { app } = createApp(q);
+    const project = await createProject(app, "Busy Project");
+
+    const { job } = await startRender(app, project.id);
+    await wait(15);
+
+    const delRes = await app.request(`/api/projects/${project.id}`, { method: "DELETE" });
+    expect(delRes.status).toBe(409);
+    const payload = await delRes.json();
+    expect(payload.jobId).toBe(job.id);
+
+    ctrl.complete();
+    await wait(15);
+  });
+});
+
+describe("POST /api/projects/:id/duplicate", () => {
+  it("duplicates a project with a new ID", async () => {
+    const { app } = createApp(new RenderQueue());
+    const project = await createProject(app, "Source Project");
+
+    const res = await app.request(`/api/projects/${project.id}/duplicate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Source Project Copy" }),
+    });
+
+    expect(res.status).toBe(201);
+    const duplicate = await res.json();
+    expect(duplicate.id).not.toBe(project.id);
+    expect(duplicate.name).toBe("Source Project Copy");
+    expect(duplicate.templateId).toBe(project.templateId);
+  });
+});
+
+describe("Persistence: projects", () => {
+  it("reloads projects from disk when storage directories are configured", async () => {
+    const storage = makeStorageConfig();
+    const firstApp = createApp(new RenderQueue(), "*", storage);
+    const created = await createProject(firstApp.app, "Persistent Project");
+
+    const secondApp = createApp(new RenderQueue(), "*", storage);
+    const projects = await secondApp.app.request("/api/projects").then((res) => res.json());
+    expect(projects.some((project: { id: string }) => project.id === created.id)).toBe(true);
+  });
+});
+
+describe("Assets API", () => {
+  it("uploads, lists, serves, renames, and deletes assets", async () => {
+    const storage = makeStorageConfig();
+    const { app } = createApp(new RenderQueue(), "*", storage);
+
+    const uploadForm = new FormData();
+    uploadForm.append("files", new File(["fake-image"], "example.png", { type: "image/png" }));
+
+    const uploadRes = await app.request("/api/assets", {
+      method: "POST",
+      body: uploadForm,
+    });
+
+    expect(uploadRes.status).toBe(201);
+    const uploadPayload = await uploadRes.json();
+    expect(uploadPayload.assets).toHaveLength(1);
+    const asset = uploadPayload.assets[0];
+
+    const listRes = await app.request("/api/assets");
+    const listPayload = await listRes.json();
+    expect(listPayload.assets).toHaveLength(1);
+    expect(listPayload.assets[0].id).toBe(asset.id);
+
+    const contentRes = await app.request(`/api/assets/${asset.id}/content`);
+    expect(contentRes.status).toBe(200);
+    expect(await contentRes.text()).toBe("fake-image");
+
+    const renameRes = await app.request(`/api/assets/${asset.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "hero-image" }),
+    });
+    expect(renameRes.status).toBe(200);
+    const renamed = await renameRes.json();
+    expect(renamed.name).toBe("hero-image");
+
+    const deleteRes = await app.request(`/api/assets/${asset.id}`, { method: "DELETE" });
+    expect(deleteRes.status).toBe(200);
+    expect(await deleteRes.json()).toEqual({ success: true });
+  });
+
+  it("persists assets across app instances when storage is configured", async () => {
+    const storage = makeStorageConfig();
+    const firstApp = createApp(new RenderQueue(), "*", storage);
+    const uploadForm = new FormData();
+    uploadForm.append("files", new File(["sound"], "clip.mp3", { type: "audio/mpeg" }));
+
+    const uploadRes = await firstApp.app.request("/api/assets", {
+      method: "POST",
+      body: uploadForm,
+    });
+    const asset = (await uploadRes.json()).assets[0];
+
+    const secondApp = createApp(new RenderQueue(), "*", storage);
+    const listPayload = await secondApp.app.request("/api/assets").then((res) => res.json());
+    expect(listPayload.assets.some((entry: { id: string }) => entry.id === asset.id)).toBe(true);
+  });
+
+  it("blocks deleting an asset that is referenced by a project", async () => {
+    const storage = makeStorageConfig();
+    const { app, projectStore } = createApp(new RenderQueue(), "*", storage);
+    const uploadForm = new FormData();
+    uploadForm.append("files", new File(["fake-image"], "guarded.png", { type: "image/png" }));
+
+    const uploadRes = await app.request("/api/assets", { method: "POST", body: uploadForm });
+    const asset = (await uploadRes.json()).assets[0];
+    const project = await createProject(app, "Asset Guard Project");
+
+    projectStore.set(project.id, {
+      ...project,
+      inputProps: { ...project.inputProps, referencedAssetId: asset.id },
+    });
+
+    const deleteRes = await app.request(`/api/assets/${asset.id}`, { method: "DELETE" });
+    expect(deleteRes.status).toBe(409);
+    const payload = await deleteRes.json();
+    expect(payload.projectIds).toContain(project.id);
   });
 });
 
@@ -637,7 +779,7 @@ describe("E2E: create project → render → poll to completion", () => {
       body: JSON.stringify({
         templateId: "history-storyline",
         name: "E2E Video",
-        aspectRatio: "16:9",
+        aspectRatio: "youtube",
       }),
     });
     expect(createRes.status).toBe(201);

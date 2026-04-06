@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   AspectRatioPresetSchema,
   AspectRatioConfig,
+  ASPECT_RATIO_PRESETS,
   ASPECT_RATIO_DIMENSIONS,
   VideoCodecSchema,
   QualityPresetSchema,
@@ -15,7 +16,28 @@ import {
 
 describe("AspectRatioPresetSchema", () => {
   it("accepts all valid presets", () => {
-    const validPresets = ["16:9", "9:16", "1:1", "4:5", "4:3", "2:3", "21:9", "custom"] as const;
+    const validPresets = [
+      "instagram-post",
+      "instagram-reel",
+      "youtube",
+      "youtube-shorts",
+      "twitter-post",
+      "tiktok",
+      "linkedin-post",
+      "linkedin-landscape",
+      "facebook-post",
+      "pinterest",
+      "square-hd",
+      "landscape-hd",
+      "16:9",
+      "9:16",
+      "1:1",
+      "4:5",
+      "4:3",
+      "2:3",
+      "21:9",
+      "custom",
+    ] as const;
     for (const preset of validPresets) {
       expect(() => AspectRatioPresetSchema.parse(preset)).not.toThrow();
     }
@@ -29,24 +51,24 @@ describe("AspectRatioPresetSchema", () => {
 });
 
 describe("ASPECT_RATIO_DIMENSIONS", () => {
-  it("16:9 is 1920x1080", () => {
-    expect(ASPECT_RATIO_DIMENSIONS["16:9"]).toEqual({ width: 1920, height: 1080 });
+  it("youtube is 1920x1080", () => {
+    expect(ASPECT_RATIO_DIMENSIONS.youtube).toEqual({ width: 1920, height: 1080 });
   });
 
-  it("9:16 is 1080x1920", () => {
-    expect(ASPECT_RATIO_DIMENSIONS["9:16"]).toEqual({ width: 1080, height: 1920 });
+  it("instagram-reel is 1080x1920", () => {
+    expect(ASPECT_RATIO_DIMENSIONS["instagram-reel"]).toEqual({ width: 1080, height: 1920 });
   });
 
-  it("1:1 is 1080x1080", () => {
-    expect(ASPECT_RATIO_DIMENSIONS["1:1"]).toEqual({ width: 1080, height: 1080 });
+  it("instagram-post is 1080x1080", () => {
+    expect(ASPECT_RATIO_DIMENSIONS["instagram-post"]).toEqual({ width: 1080, height: 1080 });
   });
 
-  it("4:5 is 1080x1350", () => {
-    expect(ASPECT_RATIO_DIMENSIONS["4:5"]).toEqual({ width: 1080, height: 1350 });
+  it("pinterest is 1000x1500", () => {
+    expect(ASPECT_RATIO_DIMENSIONS.pinterest).toEqual({ width: 1000, height: 1500 });
   });
 
-  it("21:9 is 2560x1080", () => {
-    expect(ASPECT_RATIO_DIMENSIONS["21:9"]).toEqual({ width: 2560, height: 1080 });
+  it("landscape-hd is 2560x1440", () => {
+    expect(ASPECT_RATIO_DIMENSIONS["landscape-hd"]).toEqual({ width: 2560, height: 1440 });
   });
 
   it("all standard presets have positive integer dimensions", () => {
@@ -58,8 +80,26 @@ describe("ASPECT_RATIO_DIMENSIONS", () => {
     }
   });
 
+  it("canonical preset metadata includes labels, platform, and ratio", () => {
+    expect(ASPECT_RATIO_PRESETS.youtube.label).toBe("YouTube");
+    expect(ASPECT_RATIO_PRESETS.youtube.platform).toBe("YouTube");
+    expect(ASPECT_RATIO_PRESETS.youtube.ratio).toBe("16:9");
+  });
+
   it("dimensions match actual aspect ratio within 2%", () => {
     const ratioMap: Record<string, number> = {
+      "instagram-post": 1,
+      "instagram-reel": 9 / 16,
+      youtube: 16 / 9,
+      "youtube-shorts": 9 / 16,
+      "twitter-post": 16 / 9,
+      tiktok: 9 / 16,
+      "linkedin-post": 1,
+      "linkedin-landscape": 1200 / 628,
+      "facebook-post": 1200 / 630,
+      pinterest: 2 / 3,
+      "square-hd": 1,
+      "landscape-hd": 16 / 9,
       "16:9": 16 / 9,
       "9:16": 9 / 16,
       "1:1": 1,

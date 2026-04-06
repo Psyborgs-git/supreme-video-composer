@@ -27,9 +27,19 @@ const CODEC_MAP: Record<VideoCodec, string> = {
 export interface RenderOptions {
   compositionsEntryPoint: string;
   outputDir: string;
+  browserExecutable?: string | null;
 }
 
 let bundledUrl: string | null = null;
+
+export function resolveBrowserExecutable(options: RenderOptions): string | null {
+  return (
+    options.browserExecutable ??
+    process.env.REMOTION_CHROME_EXECUTABLE ??
+    process.env.CHROME_PATH ??
+    null
+  );
+}
 
 export async function ensureBundle(entryPoint: string): Promise<string> {
   if (bundledUrl) return bundledUrl;
@@ -52,6 +62,7 @@ export async function executeRender(
   options: RenderOptions,
 ): Promise<string> {
   const serveUrl = await ensureBundle(options.compositionsEntryPoint);
+  const browserExecutable = resolveBrowserExecutable(options);
 
   onProgress({
     progress: 0,
@@ -65,6 +76,7 @@ export async function executeRender(
     serveUrl,
     id: job.templateId,
     inputProps: job.inputProps,
+    browserExecutable,
   });
 
   // Override dimensions from aspect ratio
@@ -96,6 +108,7 @@ export async function executeRender(
         width: overrideWidth,
         height: overrideHeight,
       },
+      browserExecutable,
       codec,
       outputLocation: outputFile,
       inputProps: job.inputProps,
@@ -127,11 +140,13 @@ export async function renderThumbnail(
   options: RenderOptions,
 ): Promise<Buffer> {
   const serveUrl = await ensureBundle(options.compositionsEntryPoint);
+  const browserExecutable = resolveBrowserExecutable(options);
 
   const composition = await selectComposition({
     serveUrl,
     id: compositionId,
     inputProps,
+    browserExecutable,
   });
 
   const result = await renderStill({
@@ -139,6 +154,7 @@ export async function renderThumbnail(
     composition,
     frame,
     inputProps,
+    browserExecutable,
     imageFormat: "jpeg",
     jpegQuality: 80,
     output: null as any, // return buffer

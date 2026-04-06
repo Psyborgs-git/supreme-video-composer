@@ -10,6 +10,8 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
+      - ASSETS_DIR=/data/assets
+      - PROJECTS_DIR=/data/projects
       - EXPORTS_DIR=/data/exports
     restart: unless-stopped
     shm_size: '2gb'

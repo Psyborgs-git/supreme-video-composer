@@ -8,7 +8,11 @@ import type {
   VideoCodec,
   Project,
 } from "@studio/shared-types";
-import { ASPECT_RATIO_DIMENSIONS, QUALITY_CRF } from "@studio/shared-types";
+import {
+  ASPECT_RATIO_DIMENSIONS,
+  DEFAULT_ASPECT_RATIO_PRESET,
+  QUALITY_CRF,
+} from "@studio/shared-types";
 
 interface EditorState {
   templateId: string | null;
@@ -31,6 +35,8 @@ interface EditorState {
   setAspectRatio: (preset: AspectRatioPreset, custom?: { width: number; height: number }) => void;
   setQualityPreset: (preset: QualityPreset) => void;
   setCodec: (codec: VideoCodec) => void;
+  setResolutionScale: (scale: number) => void;
+  setFps: (fps: number) => void;
   loadProject: (projectId: string) => Promise<void>;
   /** Save current editor state as a project on the backend and return the project id */
   saveProject: (name: string) => Promise<string>;
@@ -44,7 +50,11 @@ interface EditorState {
 export const useEditorStore = create<EditorState>((set, get) => ({
   templateId: null,
   inputProps: {},
-  aspectRatio: { preset: "16:9", width: 1920, height: 1080 },
+  aspectRatio: {
+    preset: DEFAULT_ASPECT_RATIO_PRESET,
+    width: ASPECT_RATIO_DIMENSIONS[DEFAULT_ASPECT_RATIO_PRESET].width,
+    height: ASPECT_RATIO_DIMENSIONS[DEFAULT_ASPECT_RATIO_PRESET].height,
+  },
   qualityPreset: "standard",
   exportFormat: {
     codec: "h264",
@@ -102,27 +112,48 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }));
   },
 
+  setResolutionScale: (scale) =>
+    set((state) => ({
+      exportFormat: { ...state.exportFormat, scale },
+    })),
+
+  setFps: (fps) =>
+    set((state) => ({
+      exportFormat: { ...state.exportFormat, fps },
+    })),
+
   loadProject: async (projectId: string) => {
     const res = await fetch(`/api/projects/${projectId}`);
     if (!res.ok) throw new Error("Project not found");
     const project: Project = await res.json();
+    const inferredPreset =
+      (Object.entries(QUALITY_CRF).find(([, crf]) => crf === project.exportFormat.crf)?.[0] as QualityPreset | undefined) ??
+      "standard";
     set({
       templateId: project.templateId,
       inputProps: project.inputProps,
       aspectRatio: project.aspectRatio,
+      exportFormat: project.exportFormat,
+      qualityPreset: inferredPreset,
       projectId: project.id,
       initialized: true,
     });
   },
 
   saveProject: async (name: string) => {
-    const { templateId, inputProps, aspectRatio } = get();
+    const { templateId, inputProps, aspectRatio, exportFormat } = get();
     if (!templateId) throw new Error("No template selected");
 
     const res = await fetch("/api/projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ templateId, name, inputProps, aspectRatio: aspectRatio.preset }),
+      body: JSON.stringify({
+        templateId,
+        name,
+        inputProps,
+        aspectRatio: aspectRatio.preset,
+        exportFormat,
+      }),
     });
     if (!res.ok) throw new Error(await res.text());
     const project = await res.json();

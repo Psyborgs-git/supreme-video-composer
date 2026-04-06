@@ -8,6 +8,7 @@
  *   serve({ fetch: app.fetch, port: 3001 });
  */
 
+import fs from "node:fs";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import {
@@ -23,11 +24,24 @@ import type {
   AspectRatioPreset,
 } from "@studio/shared-types";
 import {
-  ASPECT_RATIO_DIMENSIONS,
+  DEFAULT_ASPECT_RATIO_PRESET,
   QUALITY_CRF,
   VideoCodecSchema,
   QualityPresetSchema,
+  normalizeAspectRatioConfig,
 } from "@studio/shared-types";
+import type { StorageConfig } from "./storage";
+import {
+  deleteAssetFromDisk,
+  deletePersistedProject,
+  findProjectsUsingAsset,
+  getAssetContentPath,
+  loadAssetsFromDisk,
+  loadProjectsFromDisk,
+  persistProject,
+  renameAsset,
+  saveUploadedAssets,
+} from "./storage";
 
 export function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -41,9 +55,14 @@ export function generateId(): string {
  * @param corsOrigin   Allowed CORS origin. Defaults to "*" (open) for tests;
  *                     pass "http://localhost:3000" in production.
  */
-export function createApp(renderQueue: RenderQueue, corsOrigin = "*") {
-  const projectStore = new Map<string, Project>();
+export function createApp(
+  renderQueue: RenderQueue,
+  corsOrigin = "*",
+  storageConfig: StorageConfig = {},
+) {
+  const projectStore = loadProjectsFromDisk(storageConfig.projectsDir);
   const renderJobStore = new Map<string, RenderJob>();
+  const assetStore = loadAssetsFromDisk(storageConfig.assetsDir);
 
   // ─── Sync queue events → renderJobStore ───────────────────────────────────
   // This ensures GET /api/renders/:id always returns live state even if the
@@ -91,14 +110,111 @@ export function createApp(renderQueue: RenderQueue, corsOrigin = "*") {
         gif: { extension: ".gif", description: "Animated GIF" },
       },
       qualityPresets: QUALITY_CRF,
-      fpsOptions: [24, 25, 30, 50, 60],
+      fpsOptions: [24, 25, 30, 60],
     });
+  });
+
+  // ─── Assets ───────────────────────────────────────────────────────────────
+
+  app.get("/api/assets", (c) => {
+    const type = c.req.query("type");
+    const search = c.req.query("search")?.trim().toLowerCase();
+
+    let assets = Array.from(assetStore.values());
+    if (type) {
+      assets = assets.filter((asset) => asset.type === type);
+    }
+    if (search) {
+      assets = assets.filter((asset) => asset.name.toLowerCase().includes(search));
+    }
+
+    assets.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return c.json({ assets });
+  });
+
+  app.post("/api/assets", async (c) => {
+    const formData = await c.req.formData();
+    const rawFiles = formData
+      .getAll("files")
+      .filter((value): value is File => value instanceof File);
+    const singleFile = formData.get("file");
+    const files = rawFiles.length > 0
+      ? rawFiles
+      : singleFile instanceof File
+        ? [singleFile]
+        : [];
+
+    if (files.length === 0) {
+      return c.json({ error: "At least one file is required" }, 400);
+    }
+
+    try {
+      const assets = await saveUploadedAssets(storageConfig.assetsDir, files, assetStore);
+      return c.json({ assets }, 201);
+    } catch (error) {
+      return c.json(
+        { error: error instanceof Error ? error.message : "Failed to upload assets" },
+        400,
+      );
+    }
+  });
+
+  app.get("/api/assets/:id/content", (c) => {
+    const asset = assetStore.get(c.req.param("id"));
+    if (!asset) return c.json({ error: "Asset not found" }, 404);
+
+    const contentPath = getAssetContentPath(assetStore, asset.id);
+    if (!contentPath || !fs.existsSync(contentPath)) {
+      return c.json({ error: "Asset content not found" }, 404);
+    }
+
+    return new Response(fs.readFileSync(contentPath), {
+      status: 200,
+      headers: {
+        "Content-Type": asset.mimeType,
+        "Cache-Control": "public, max-age=3600",
+      },
+    });
+  });
+
+  app.patch("/api/assets/:id", async (c) => {
+    const body = (await c.req.json<{ name?: string }>().catch(() => ({}))) as {
+      name?: string;
+    };
+    if (!body.name?.trim()) {
+      return c.json({ error: "Asset name is required" }, 400);
+    }
+
+    const asset = renameAsset(storageConfig.assetsDir, assetStore, c.req.param("id"), body.name);
+    if (!asset) return c.json({ error: "Asset not found" }, 404);
+    return c.json(asset);
+  });
+
+  app.delete("/api/assets/:id", (c) => {
+    const assetId = c.req.param("id");
+    if (!assetStore.has(assetId)) return c.json({ error: "Asset not found" }, 404);
+
+    const projectIds = findProjectsUsingAsset(projectStore, assetId);
+    if (projectIds.length > 0) {
+      return c.json(
+        {
+          error: "Asset is still referenced by one or more projects",
+          projectIds,
+        },
+        409,
+      );
+    }
+
+    deleteAssetFromDisk(storageConfig.assetsDir, assetStore, assetId);
+    return c.json({ success: true });
   });
 
   // ─── Projects ─────────────────────────────────────────────────────────────
 
   app.get("/api/projects", (c) => {
-    return c.json(Array.from(projectStore.values()));
+    return c.json(
+      Array.from(projectStore.values()).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+    );
   });
 
   app.post("/api/projects", async (c) => {
@@ -107,9 +223,10 @@ export function createApp(renderQueue: RenderQueue, corsOrigin = "*") {
       name: string;
       inputProps?: Record<string, unknown>;
       aspectRatio?: AspectRatioPreset;
+      exportFormat?: Partial<ExportFormat>;
     }>();
 
-    const { templateId, name, inputProps, aspectRatio } = body;
+    const { templateId, name, inputProps, aspectRatio, exportFormat } = body;
 
     if (!templateId || !name) {
       return c.json({ error: "templateId and name are required" }, 400);
@@ -126,21 +243,26 @@ export function createApp(renderQueue: RenderQueue, corsOrigin = "*") {
       return c.json({ error: validation.error }, 400);
     }
 
-    const arPreset = (aspectRatio ?? "16:9") as Exclude<AspectRatioPreset, "custom">;
-    const dims = ASPECT_RATIO_DIMENSIONS[arPreset] ?? ASPECT_RATIO_DIMENSIONS["16:9"];
+    const fallbackPreset =
+      (template.manifest.supportedAspectRatios[0] ?? DEFAULT_ASPECT_RATIO_PRESET) as Exclude<
+        AspectRatioPreset,
+        "custom"
+      >;
+    const resolvedAspectRatio = normalizeAspectRatioConfig(aspectRatio, undefined, fallbackPreset);
 
     const project: Project = {
       id: generateId(),
       name,
       templateId,
       inputProps: validation.data,
-      aspectRatio: { preset: arPreset, ...dims },
+      aspectRatio: resolvedAspectRatio,
       exportFormat: {
         codec: "h264",
         fileExtension: ".mp4",
         crf: QUALITY_CRF.standard,
         fps: template.manifest.defaultFps,
         scale: 1,
+        ...exportFormat,
       },
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -148,6 +270,7 @@ export function createApp(renderQueue: RenderQueue, corsOrigin = "*") {
     };
 
     projectStore.set(project.id, project);
+    persistProject(storageConfig.projectsDir, project);
     return c.json(project, 201);
   });
 
@@ -160,6 +283,7 @@ export function createApp(renderQueue: RenderQueue, corsOrigin = "*") {
   app.patch("/api/projects/:id", async (c) => {
     const project = projectStore.get(c.req.param("id"));
     if (!project) return c.json({ error: "Project not found" }, 404);
+    const template = getTemplate(project.templateId);
 
     const body = await c.req.json<{
       name?: string;
@@ -178,9 +302,15 @@ export function createApp(renderQueue: RenderQueue, corsOrigin = "*") {
       project.inputProps = validation.data;
     }
 
-    if (body.aspectRatio && body.aspectRatio !== "custom") {
-      const dims = ASPECT_RATIO_DIMENSIONS[body.aspectRatio];
-      project.aspectRatio = { preset: body.aspectRatio, ...dims };
+    if (body.aspectRatio) {
+      project.aspectRatio = normalizeAspectRatioConfig(
+        body.aspectRatio,
+        project.aspectRatio,
+        (template?.manifest.supportedAspectRatios[0] ?? DEFAULT_ASPECT_RATIO_PRESET) as Exclude<
+          AspectRatioPreset,
+          "custom"
+        >,
+      );
     }
 
     if (body.exportFormat) {
@@ -190,14 +320,51 @@ export function createApp(renderQueue: RenderQueue, corsOrigin = "*") {
     project.updatedAt = new Date().toISOString();
     project.version++;
     projectStore.set(project.id, project);
+    persistProject(storageConfig.projectsDir, project);
     return c.json(project);
   });
 
   app.delete("/api/projects/:id", (c) => {
     const id = c.req.param("id");
     if (!projectStore.has(id)) return c.json({ error: "Project not found" }, 404);
+
+    const activeRender = Array.from(renderJobStore.values()).find(
+      (job) =>
+        job.projectId === id &&
+        ["queued", "bundling", "rendering", "encoding"].includes(job.status),
+    );
+    if (activeRender) {
+      return c.json(
+        { error: "Project has an active render job", jobId: activeRender.id },
+        409,
+      );
+    }
+
     projectStore.delete(id);
+    deletePersistedProject(storageConfig.projectsDir, id);
     return c.json({ success: true });
+  });
+
+  app.post("/api/projects/:id/duplicate", async (c) => {
+    const project = projectStore.get(c.req.param("id"));
+    if (!project) return c.json({ error: "Project not found" }, 404);
+
+    const body = (await c.req.json<{ name?: string }>().catch(() => ({}))) as {
+      name?: string;
+    };
+    const duplicate: Project = {
+      ...project,
+      id: generateId(),
+      name: body.name?.trim() || `${project.name} Copy`,
+      inputProps: JSON.parse(JSON.stringify(project.inputProps)),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      version: 1,
+    };
+
+    projectStore.set(duplicate.id, duplicate);
+    persistProject(storageConfig.projectsDir, duplicate);
+    return c.json(duplicate, 201);
   });
 
   // ─── Render ───────────────────────────────────────────────────────────────
@@ -294,5 +461,5 @@ export function createApp(renderQueue: RenderQueue, corsOrigin = "*") {
     return c.json({ success, jobId });
   });
 
-  return { app, projectStore, renderJobStore };
+  return { app, projectStore, renderJobStore, assetStore };
 }

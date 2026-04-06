@@ -153,7 +153,7 @@ describe("Registered template components", () => {
 describe("HistoryStoryline manifest", () => {
   const get = () => getTemplate("history-storyline")!.manifest;
   it("compositionId is HistoryStoryline", () => expect(get().compositionId).toBe("HistoryStoryline"));
-  it("supports 16:9", () => expect(get().supportedAspectRatios).toContain("16:9"));
+  it("supports youtube", () => expect(get().supportedAspectRatios).toContain("youtube"));
   it("category is educational", () => expect(get().category).toBe("educational"));
   it("thumbnailFrame > 0", () => expect(get().thumbnailFrame).toBeGreaterThan(0));
 });
@@ -161,20 +161,20 @@ describe("HistoryStoryline manifest", () => {
 describe("BeatSyncedVisualizer manifest", () => {
   const get = () => getTemplate("beat-synced-visualizer")!.manifest;
   it("compositionId is BeatSyncedVisualizer", () => expect(get().compositionId).toBe("BeatSyncedVisualizer"));
-  it("supports 1:1", () => expect(get().supportedAspectRatios).toContain("1:1"));
+  it("supports instagram-post", () => expect(get().supportedAspectRatios).toContain("instagram-post"));
   it("category is music", () => expect(get().category).toBe("music"));
 });
 
 describe("SocialMediaReel manifest", () => {
   const get = () => getTemplate("social-media-reel")!.manifest;
   it("compositionId is SocialMediaReel", () => expect(get().compositionId).toBe("SocialMediaReel"));
-  it("supports 9:16", () => expect(get().supportedAspectRatios).toContain("9:16"));
+  it("supports instagram-reel", () => expect(get().supportedAspectRatios).toContain("instagram-reel"));
   it("category is social", () => expect(get().category).toBe("social"));
 });
 
 describe("ProductShowcase manifest", () => {
   const get = () => getTemplate("product-showcase")!.manifest;
   it("compositionId is ProductShowcase", () => expect(get().compositionId).toBe("ProductShowcase"));
-  it("supports 4:5", () => expect(get().supportedAspectRatios).toContain("4:5"));
+  it("supports pinterest", () => expect(get().supportedAspectRatios).toContain("pinterest"));
   it("category is marketing", () => expect(get().category).toBe("marketing"));
 });
