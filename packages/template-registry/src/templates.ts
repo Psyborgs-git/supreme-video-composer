@@ -13,6 +13,10 @@ import {
   ProductShowcaseSchema,
   BabyLens,
   BabyLensSchema,
+  TikTokCaption,
+  TikTokCaptionSchema,
+  PromptToVideo,
+  PromptToVideoSchema,
 } from "@studio/remotion-compositions/templates";
 import type {
   HistoryStorylineProps,
@@ -21,6 +25,8 @@ import type {
   SocialMediaReelProps,
   ProductShowcaseProps,
   BabyLensProps,
+  TikTokCaptionProps,
+  PromptToVideoProps,
 } from "@studio/remotion-compositions/templates";
 import { getAudioDurationInSeconds } from "@remotion/media-utils";
 
@@ -200,4 +206,77 @@ registerTemplate({
     compositionId: "BabyLens",
   },
   component: BabyLens,
+});
+
+// ─── TikTok Caption ──────────────────────────────────────────────
+
+const tiktokCaptionDefaults = TikTokCaptionSchema.parse({});
+
+const tiktokCaptionCalculateMetadata: CalculateMetadataFunction<TikTokCaptionProps> = async ({
+  props,
+}) => {
+  // Duration based on last caption end frame, or fallback to 300 frames (10s)
+  const captions = props.captions ?? [];
+  const lastEnd = captions.reduce(
+    (max: number, c: { endFrame: number }) => Math.max(max, c.endFrame),
+    0,
+  );
+  return { durationInFrames: lastEnd > 0 ? lastEnd : 300, props };
+};
+
+registerTemplate({
+  manifest: {
+    id: "tiktok-caption",
+    name: "TikTok Caption",
+    description:
+      "TikTok-style captioned video with word-level highlighting, customizable styles, and progress bar",
+    category: "social",
+    tags: ["tiktok", "captions", "subtitles", "social", "vertical", "reels"],
+    defaultDurationInFrames: 300,
+    defaultFps: 30,
+    supportedAspectRatios: ["tiktok", "instagram-reel", "youtube-shorts"],
+    propsSchema: TikTokCaptionSchema,
+    defaultProps: tiktokCaptionDefaults as unknown as Record<string, unknown>,
+    thumbnailFrame: 15,
+    compositionId: "TikTokCaption",
+  },
+  component: TikTokCaption,
+  calculateMetadata: tiktokCaptionCalculateMetadata,
+});
+
+// ─── Prompt to Video ─────────────────────────────────────────────
+
+const promptToVideoDefaults = PromptToVideoSchema.parse({});
+
+const promptToVideoCalculateMetadata: CalculateMetadataFunction<PromptToVideoProps> = async ({
+  props,
+}) => {
+  const scenes = props.scenes ?? [];
+  let totalFrames = scenes.reduce(
+    (sum: number, s: { durationFrames: number }) => sum + s.durationFrames,
+    0,
+  );
+  if (props.titleCard?.text) totalFrames += props.titleCard.durationFrames;
+  if (props.closingCard?.text) totalFrames += props.closingCard.durationFrames;
+  return { durationInFrames: totalFrames > 0 ? totalFrames : 600, props };
+};
+
+registerTemplate({
+  manifest: {
+    id: "prompt-to-video",
+    name: "Prompt to Video",
+    description:
+      "Multi-scene story video with transitions, text overlays, and optional AI-assisted scene generation",
+    category: "storytelling",
+    tags: ["story", "scenes", "ai", "narration", "prompt", "video"],
+    defaultDurationInFrames: 600,
+    defaultFps: 30,
+    supportedAspectRatios: ["tiktok", "instagram-reel", "youtube-shorts", "youtube"],
+    propsSchema: PromptToVideoSchema,
+    defaultProps: promptToVideoDefaults as unknown as Record<string, unknown>,
+    thumbnailFrame: 30,
+    compositionId: "PromptToVideo",
+  },
+  component: PromptToVideo,
+  calculateMetadata: promptToVideoCalculateMetadata,
 });

@@ -15,3 +15,9 @@ export type { ProductShowcaseProps } from "./ProductShowcase";
 
 export { BabyLens, BabyLensSchema } from "./BabyLens";
 export type { BabyLensProps } from "./BabyLens";
+
+export { TikTokCaption, TikTokCaptionSchema } from "./tiktok-caption";
+export type { TikTokCaptionProps } from "./tiktok-caption";
+
+export { PromptToVideo, PromptToVideoSchema } from "./prompt-to-video";
+export type { PromptToVideoProps } from "./prompt-to-video";

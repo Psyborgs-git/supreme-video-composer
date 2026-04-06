@@ -12,6 +12,10 @@ import {
   ProductShowcaseSchema,
   BabyLens,
   BabyLensSchema,
+  TikTokCaption,
+  TikTokCaptionSchema,
+  PromptToVideo,
+  PromptToVideoSchema,
 } from "./templates";
 
 export const RemotionRoot: React.FC = () => {
@@ -76,6 +80,26 @@ export const RemotionRoot: React.FC = () => {
         height={1920}
         defaultProps={BabyLensSchema.parse({})}
         schema={BabyLensSchema}
+      />
+      <Composition
+        id="TikTokCaption"
+        component={TikTokCaption}
+        durationInFrames={300}
+        fps={30}
+        width={1080}
+        height={1920}
+        defaultProps={TikTokCaptionSchema.parse({})}
+        schema={TikTokCaptionSchema}
+      />
+      <Composition
+        id="PromptToVideo"
+        component={PromptToVideo}
+        durationInFrames={600}
+        fps={30}
+        width={1080}
+        height={1920}
+        defaultProps={PromptToVideoSchema.parse({})}
+        schema={PromptToVideoSchema}
       />
     </>
   );
