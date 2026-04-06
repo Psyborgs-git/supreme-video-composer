@@ -22,6 +22,10 @@ import {
   handleListAspectRatios,
   handlePreviewUrl,
   handleExportFormats,
+  handleListAssets,
+  handleGetAsset,
+  handleDeleteAsset,
+  handleRegisterAsset,
 } from "./handlers.js";
 
 const aspectRatioEnum = z.enum([
@@ -153,6 +157,46 @@ server.tool(
 server.tool("list_aspect_ratios", "List all supported aspect ratio presets with dimensions", {}, handleListAspectRatios);
 
 server.tool("export_formats", "List all supported export formats and their settings", {}, handleExportFormats);
+
+// ─── Asset tools ───────────────────────────────────────────────────────────
+
+server.tool(
+  "list_assets",
+  "List assets registered in the MCP server, optionally filtered by type or search query",
+  {
+    type: z.enum(["image", "video", "audio", "font"]).optional().describe("Filter by asset type"),
+    search: z.string().optional().describe("Search assets by name (case-insensitive)"),
+  },
+  handleListAssets,
+);
+
+server.tool(
+  "get_asset",
+  "Get details of a specific asset",
+  { assetId: z.string().describe("The asset ID") },
+  handleGetAsset,
+);
+
+server.tool(
+  "delete_asset",
+  "Delete an asset from the registry (blocked if referenced by a project)",
+  { assetId: z.string().describe("The asset ID to delete") },
+  handleDeleteAsset,
+);
+
+server.tool(
+  "register_asset",
+  "Register an already-uploaded asset in the MCP server registry",
+  {
+    id: z.string().describe("Unique asset ID"),
+    name: z.string().describe("Human-readable asset name"),
+    type: z.enum(["image", "video", "audio", "font"]).describe("Asset type"),
+    path: z.string().describe("Absolute path to the asset file on disk"),
+    mimeType: z.string().describe("MIME type of the asset"),
+    sizeBytes: z.number().int().min(0).describe("File size in bytes"),
+  },
+  handleRegisterAsset,
+);
 
 async function main() {
   const transport = new StdioServerTransport();

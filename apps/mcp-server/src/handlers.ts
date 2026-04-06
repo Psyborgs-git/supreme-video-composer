@@ -9,12 +9,15 @@ import type {
   Project,
   RenderJob,
   ExportFormat,
+  Asset,
+  AssetType,
 } from "@studio/shared-types";
 import {
   ASPECT_RATIO_PRESETS,
   DEFAULT_ASPECT_RATIO_PRESET,
   normalizeAspectRatioConfig,
   QUALITY_CRF,
+  AssetTypeSchema,
 } from "@studio/shared-types";
 
 // ─── Types ───────────────────────────────────────────────────────
@@ -29,10 +32,12 @@ export interface ToolResult {
 
 export const projectStore = new Map<string, Project>();
 export const renderJobStore = new Map<string, RenderJob>();
+export const assetStore = new Map<string, Asset>();
 
 export function clearStores() {
   projectStore.clear();
   renderJobStore.clear();
+  assetStore.clear();
 }
 
 /** Pseudo-UUID generator (no external dependency) */
@@ -375,4 +380,117 @@ export async function handleExportFormats(): Promise<ToolResult> {
     fpsOptions: [24, 25, 30, 60],
   };
   return okResult(formats);
+}
+
+// ─── Asset tools ─────────────────────────────────────────────────
+
+export async function handleListAssets(
+  args: { type?: string; search?: string } = {},
+): Promise<ToolResult> {
+  let assets = Array.from(assetStore.values());
+
+  if (args.type) {
+    const parsed = AssetTypeSchema.safeParse(args.type);
+    if (!parsed.success) {
+      return errorResult(
+        "INVALID_ASSET_TYPE",
+        `Invalid asset type "${args.type}". Must be one of: image, video, audio, font`,
+      );
+    }
+    assets = assets.filter((a) => a.type === parsed.data);
+  }
+
+  if (args.search) {
+    const q = args.search.trim().toLowerCase();
+    assets = assets.filter((a) => a.name.toLowerCase().includes(q));
+  }
+
+  assets.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return okResult({ assets });
+}
+
+export async function handleGetAsset(args: { assetId: string }): Promise<ToolResult> {
+  const asset = assetStore.get(args.assetId);
+  if (!asset) {
+    return errorResult("ASSET_NOT_FOUND", `Asset "${args.assetId}" not found`);
+  }
+  return okResult(asset);
+}
+
+export async function handleDeleteAsset(args: { assetId: string }): Promise<ToolResult> {
+  const asset = assetStore.get(args.assetId);
+  if (!asset) {
+    return errorResult("ASSET_NOT_FOUND", `Asset "${args.assetId}" not found`);
+  }
+
+  // Prevent deletion if any project references this asset
+  const referencingProjects = Array.from(projectStore.values()).filter((project) =>
+    hasAssetReference(project.inputProps, args.assetId),
+  );
+
+  if (referencingProjects.length > 0) {
+    return errorResult(
+      "ASSET_IN_USE",
+      `Asset "${args.assetId}" is referenced by ${referencingProjects.length} project(s)`,
+      { projectIds: referencingProjects.map((p) => p.id) },
+    );
+  }
+
+  assetStore.delete(args.assetId);
+  return okResult({ deleted: true, assetId: args.assetId });
+}
+
+/** Register an asset record in the MCP server's in-memory store.
+ *  The actual file must already exist on disk (e.g. uploaded via the HTTP API).
+ */
+export async function handleRegisterAsset(args: {
+  id: string;
+  name: string;
+  type: string;
+  path: string;
+  mimeType: string;
+  sizeBytes: number;
+}): Promise<ToolResult> {
+  const typeResult = AssetTypeSchema.safeParse(args.type);
+  if (!typeResult.success) {
+    return errorResult(
+      "INVALID_ASSET_TYPE",
+      `Invalid asset type "${args.type}". Must be one of: image, video, audio, font`,
+    );
+  }
+
+  if (!args.id || !args.name || !args.path || !args.mimeType) {
+    return errorResult("VALIDATION_ERROR", "id, name, path, and mimeType are required");
+  }
+
+  if (assetStore.has(args.id)) {
+    return errorResult("ASSET_ALREADY_EXISTS", `Asset with id "${args.id}" already exists`);
+  }
+
+  const asset: Asset = {
+    id: args.id,
+    name: args.name,
+    type: typeResult.data,
+    path: args.path,
+    mimeType: args.mimeType,
+    size: args.sizeBytes,
+    sizeBytes: args.sizeBytes,
+    createdAt: new Date().toISOString(),
+  };
+
+  assetStore.set(asset.id, asset);
+  return okResult(asset);
+}
+
+// ─── Recursive asset reference checker ──────────────────────────
+
+function hasAssetReference(value: unknown, assetId: string): boolean {
+  if (typeof value === "string") return value === assetId;
+  if (Array.isArray(value)) return value.some((v) => hasAssetReference(v, assetId));
+  if (value !== null && typeof value === "object") {
+    return Object.values(value as Record<string, unknown>).some((v) =>
+      hasAssetReference(v, assetId),
+    );
+  }
+  return false;
 }
