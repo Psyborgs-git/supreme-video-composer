@@ -8,6 +8,13 @@ import { Projects } from "./pages/Projects";
 import { Assets } from "./pages/Assets";
 import "./index.css";
 
+// Apply saved theme before first paint to prevent flash
+const savedTheme = localStorage.getItem("theme");
+const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+if (savedTheme === "dark" || (!savedTheme && prefersDark)) {
+  document.documentElement.classList.add("dark");
+}
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>

@@ -48,7 +48,7 @@ export const AspectRatioSelector: React.FC<AspectRatioSelectorProps> = ({
           className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
             value === preset
               ? "bg-blue-600 text-white"
-              : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"
+              : "bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-400 hover:bg-gray-200 dark:hover:bg-zinc-700 hover:text-gray-900 dark:hover:text-zinc-200"
           }`}
         >
           <span className="block">{meta.title}</span>

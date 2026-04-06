@@ -125,31 +125,31 @@ export const Dashboard: React.FC = () => {
   };
 
   const inputClasses =
-    "w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-600";
+    "w-full px-3 py-2 bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg text-sm text-gray-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-colors";
 
   return (
-    <div className="p-8 max-w-7xl mx-auto" onClick={() => setDeleteConfirm(null)}>
+    <div className="p-4 sm:p-8 max-w-7xl mx-auto" onClick={() => setDeleteConfirm(null)}>
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-1">Templates</h1>
-        <p className="text-zinc-400">Pick a template to create a new video</p>
+        <h1 className="text-2xl sm:text-3xl font-bold mb-1">Templates</h1>
+        <p className="text-gray-500 dark:text-zinc-400 text-sm sm:text-base">Pick a template to create a new video</p>
       </div>
 
-      <div className="flex gap-3 mb-8 flex-wrap items-center">
+      <div className="flex gap-2 mb-6 flex-wrap items-center">
         <input
           type="text"
           placeholder="Search templates…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-xl text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-600 w-56"
+          className="px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl text-sm text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-600 w-48 sm:w-56 transition-colors"
         />
         {CATEGORIES.map((cat) => (
           <button
             key={cat}
             onClick={() => setActiveCategory(cat)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium capitalize transition-colors ${
+            className={`px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium capitalize transition-colors ${
               activeCategory === cat
                 ? "bg-blue-600 text-white"
-                : "bg-zinc-800 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700"
+                : "bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-zinc-100 hover:bg-gray-200 dark:hover:bg-zinc-700"
             }`}
           >
             {cat}
@@ -158,13 +158,13 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {filtered.length === 0 ? (
-        <p className="text-zinc-500 text-center py-16">No templates found</p>
+        <p className="text-gray-400 dark:text-zinc-500 text-center py-16">No templates found</p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {filtered.map((template) => (
             <div
               key={template.manifest.id}
-              className="group relative rounded-xl border border-zinc-800 bg-zinc-900 overflow-hidden hover:border-zinc-600 transition-colors cursor-pointer"
+              className="group relative rounded-xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden hover:border-gray-300 dark:hover:border-zinc-600 transition-colors cursor-pointer shadow-sm hover:shadow-md"
               onClick={() => openNewVideoModal(template)}
             >
               {/* Action buttons */}
@@ -174,17 +174,17 @@ export const Dashboard: React.FC = () => {
               >
                 <button
                   onClick={(e) => openEditModal(e, template)}
-                  className="w-8 h-8 flex items-center justify-center bg-zinc-800/90 hover:bg-zinc-700 rounded-lg text-zinc-400 hover:text-zinc-100 transition-colors backdrop-blur-sm text-sm"
+                  className="w-8 h-8 flex items-center justify-center bg-white/90 dark:bg-zinc-800/90 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-lg text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-zinc-100 transition-colors backdrop-blur-sm text-sm border border-gray-200 dark:border-transparent"
                   title="Edit template metadata"
                 >
                   ✎
                 </button>
                 <button
                   onClick={(e) => handleDelete(e, template.manifest.id)}
-                  className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold transition-colors backdrop-blur-sm ${
+                  className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold transition-colors backdrop-blur-sm border ${
                     deleteConfirm === template.manifest.id
-                      ? "bg-red-600 text-white"
-                      : "bg-zinc-800/90 hover:bg-red-900 text-zinc-400 hover:text-red-300"
+                      ? "bg-red-600 border-red-600 text-white"
+                      : "bg-white/90 dark:bg-zinc-800/90 border-gray-200 dark:border-transparent hover:bg-red-50 dark:hover:bg-red-900 text-gray-500 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-300"
                   }`}
                   title={
                     deleteConfirm === template.manifest.id
@@ -196,30 +196,30 @@ export const Dashboard: React.FC = () => {
                 </button>
               </div>
 
-              <div className="aspect-video bg-zinc-800 overflow-hidden pointer-events-none">
+              <div className="aspect-video bg-gray-100 dark:bg-zinc-800 overflow-hidden pointer-events-none">
                 <TemplateThumbnail template={template} width={480} height={270} />
               </div>
 
               <div className="p-4">
                 <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-semibold text-lg group-hover:text-blue-400 transition-colors leading-tight">
+                  <h3 className="font-semibold text-base sm:text-lg group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors leading-tight">
                     {template.manifest.name}
                   </h3>
-                  <span className="shrink-0 text-xs text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded capitalize">
+                  <span className="shrink-0 text-xs text-gray-500 dark:text-zinc-500 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded capitalize">
                     {template.manifest.category}
                   </span>
                 </div>
-                <p className="text-sm text-zinc-400 mt-1 line-clamp-2">
+                <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1 line-clamp-2">
                   {template.manifest.description}
                 </p>
                 <div className="flex gap-2 mt-3 flex-wrap">
                   {template.manifest.tags.slice(0, 3).map((tag) => (
-                    <span key={tag} className="px-2 py-0.5 rounded-full bg-zinc-800 text-xs text-zinc-400">
+                    <span key={tag} className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-zinc-800 text-xs text-gray-500 dark:text-zinc-400">
                       {tag}
                     </span>
                   ))}
                 </div>
-                <div className="mt-3 flex items-center justify-between text-xs text-zinc-500">
+                <div className="mt-3 flex items-center justify-between text-xs text-gray-400 dark:text-zinc-500">
                   <span>
                     {template.manifest.supportedAspectRatios
                       .map((preset) => ASPECT_RATIO_PRESETS[preset as keyof typeof ASPECT_RATIO_PRESETS]?.label ?? preset)
@@ -230,7 +230,7 @@ export const Dashboard: React.FC = () => {
                     &nbsp;·&nbsp;{template.manifest.defaultFps}fps
                   </span>
                 </div>
-                <button className="mt-3 w-full py-2 bg-blue-600/10 hover:bg-blue-600 border border-blue-600/30 hover:border-blue-600 text-blue-400 hover:text-white text-sm font-medium rounded-lg transition-all">
+                <button className="mt-3 w-full py-2 bg-blue-50 dark:bg-blue-600/10 hover:bg-blue-600 border border-blue-200 dark:border-blue-600/30 hover:border-blue-600 text-blue-600 dark:text-blue-400 hover:text-white text-sm font-medium rounded-lg transition-all">
                   Use Template →
                 </button>
               </div>
@@ -242,30 +242,30 @@ export const Dashboard: React.FC = () => {
       {/* New Video Modal */}
       {selectedTemplate && (
         <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
           onClick={() => setSelectedTemplate(null)}
         >
           <div
-            className="bg-zinc-900 border border-zinc-700 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+            className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between p-6 border-b border-zinc-800">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-zinc-800">
               <div>
-                <h2 className="text-xl font-bold">New Video</h2>
-                <p className="text-sm text-zinc-400 mt-0.5">Template: {selectedTemplate.manifest.name}</p>
+                <h2 className="text-lg sm:text-xl font-bold">New Video</h2>
+                <p className="text-sm text-gray-500 dark:text-zinc-400 mt-0.5">Template: {selectedTemplate.manifest.name}</p>
               </div>
               <button
                 onClick={() => setSelectedTemplate(null)}
-                className="text-zinc-500 hover:text-zinc-100 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-zinc-800 text-lg"
+                className="text-gray-400 dark:text-zinc-500 hover:text-gray-900 dark:hover:text-zinc-100 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-lg transition-colors"
               >
                 ✕
               </button>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-4 sm:p-6 space-y-5">
               <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-2">
-                  Video Name <span className="text-red-400">*</span>
+                <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-2">
+                  Video Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -274,13 +274,13 @@ export const Dashboard: React.FC = () => {
                   value={videoName}
                   onChange={(e) => setVideoName(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-                  className="w-full px-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-xl text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  className="w-full px-4 py-2.5 bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-xl text-sm text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-colors"
                 />
               </div>
 
               {selectedTemplate.manifest.supportedAspectRatios.length > 1 && (
                 <div>
-                  <label className="block text-sm font-medium text-zinc-300 mb-2">Aspect Ratio</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-2">Aspect Ratio</label>
                   <AspectRatioSelector
                     value={videoAspectRatio}
                     supported={selectedTemplate.manifest.supportedAspectRatios as AspectRatioPreset[]}
@@ -290,10 +290,10 @@ export const Dashboard: React.FC = () => {
               )}
 
               <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-2">
                   Content &amp; Properties
                 </label>
-                <div className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700/50">
+                <div className="bg-gray-50 dark:bg-zinc-800/50 rounded-xl p-4 border border-gray-200 dark:border-zinc-700/50 transition-colors">
                   <PropsForm
                     schema={selectedTemplate.manifest.propsSchema}
                     values={videoProps}
@@ -303,14 +303,14 @@ export const Dashboard: React.FC = () => {
               </div>
 
               {createError && (
-                <p className="text-red-400 text-sm bg-red-900/20 rounded-lg px-3 py-2">{createError}</p>
+                <p className="text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">{createError}</p>
               )}
             </div>
 
-            <div className="p-6 border-t border-zinc-800 flex justify-end gap-3">
+            <div className="p-4 sm:p-6 border-t border-gray-200 dark:border-zinc-800 flex justify-end gap-3">
               <button
                 onClick={() => setSelectedTemplate(null)}
-                className="px-5 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium rounded-xl transition-colors"
+                className="px-5 py-2 bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-700 dark:text-zinc-300 text-sm font-medium rounded-xl transition-colors"
               >
                 Cancel
               </button>
@@ -329,47 +329,47 @@ export const Dashboard: React.FC = () => {
       {/* Edit Template Modal */}
       {editingTemplate && (
         <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
           onClick={() => setEditingTemplate(null)}
         >
           <div
-            className="bg-zinc-900 border border-zinc-700 rounded-2xl w-full max-w-lg"
+            className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between p-6 border-b border-zinc-800">
-              <h2 className="text-xl font-bold">Edit Template</h2>
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-zinc-800">
+              <h2 className="text-lg sm:text-xl font-bold">Edit Template</h2>
               <button
                 onClick={() => setEditingTemplate(null)}
-                className="text-zinc-500 hover:text-zinc-100 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-zinc-800 text-lg"
+                className="text-gray-400 dark:text-zinc-500 hover:text-gray-900 dark:hover:text-zinc-100 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-lg transition-colors"
               >
                 ✕
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
-              <p className="text-xs text-zinc-500 bg-zinc-800/80 rounded-lg px-3 py-2">
+            <div className="p-4 sm:p-6 space-y-4">
+              <p className="text-xs text-gray-500 dark:text-zinc-500 bg-gray-50 dark:bg-zinc-800/80 rounded-lg px-3 py-2">
                 Metadata changes are session-only and reset on server restart.
               </p>
               <div>
-                <label className="block text-xs font-medium text-zinc-400 mb-1">Name</label>
+                <label className="block text-xs font-medium text-gray-500 dark:text-zinc-400 mb-1">Name</label>
                 <input type="text" value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} className={inputClasses} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-zinc-400 mb-1">Description</label>
+                <label className="block text-xs font-medium text-gray-500 dark:text-zinc-400 mb-1">Description</label>
                 <textarea rows={2} value={editForm.description} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} className={`${inputClasses} resize-none`} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-zinc-400 mb-1">Category</label>
+                <label className="block text-xs font-medium text-gray-500 dark:text-zinc-400 mb-1">Category</label>
                 <input type="text" value={editForm.category} onChange={(e) => setEditForm((f) => ({ ...f, category: e.target.value }))} className={inputClasses} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-zinc-400 mb-1">Tags <span className="text-zinc-600 font-normal">(comma-separated)</span></label>
+                <label className="block text-xs font-medium text-gray-500 dark:text-zinc-400 mb-1">Tags <span className="text-gray-400 dark:text-zinc-600 font-normal">(comma-separated)</span></label>
                 <input type="text" value={editForm.tags} onChange={(e) => setEditForm((f) => ({ ...f, tags: e.target.value }))} className={inputClasses} />
               </div>
             </div>
 
-            <div className="p-6 border-t border-zinc-800 flex justify-end gap-3">
-              <button onClick={() => setEditingTemplate(null)} className="px-5 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium rounded-xl transition-colors">
+            <div className="p-4 sm:p-6 border-t border-gray-200 dark:border-zinc-800 flex justify-end gap-3">
+              <button onClick={() => setEditingTemplate(null)} className="px-5 py-2 bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-700 dark:text-zinc-300 text-sm font-medium rounded-xl transition-colors">
                 Cancel
               </button>
               <button onClick={handleSaveEdit} className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-xl transition-colors">

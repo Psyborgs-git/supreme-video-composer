@@ -15,9 +15,14 @@ import {
   handleListAspectRatios,
   handlePreviewUrl,
   handleExportFormats,
+  handleListAssets,
+  handleGetAsset,
+  handleDeleteAsset,
+  handleRegisterAsset,
   clearStores,
   projectStore,
   renderJobStore,
+  assetStore,
 } from "../handlers";
 
 // Clear stores between tests to prevent state leakage
@@ -677,5 +682,240 @@ describe("MCP: error contract", () => {
       expect(typeof parsed.error.code).toBe("string");
       expect(typeof parsed.error.message).toBe("string");
     }
+  });
+});
+
+// ─── list_assets ─────────────────────────────────────────────────────
+
+describe("MCP: list_assets", () => {
+  it("returns empty array when no assets are registered", async () => {
+    const result = await handleListAssets();
+    expect(result.isError).toBeUndefined();
+    const { assets } = parseText(result);
+    expect(Array.isArray(assets)).toBe(true);
+    expect(assets).toHaveLength(0);
+  });
+
+  it("returns all registered assets", async () => {
+    await handleRegisterAsset({
+      id: "asset-1",
+      name: "photo",
+      type: "image",
+      path: "/data/assets/images/photo.jpg",
+      mimeType: "image/jpeg",
+      sizeBytes: 102400,
+    });
+    await handleRegisterAsset({
+      id: "asset-2",
+      name: "track",
+      type: "audio",
+      path: "/data/assets/audio/track.mp3",
+      mimeType: "audio/mpeg",
+      sizeBytes: 2048000,
+    });
+
+    const result = await handleListAssets();
+    const { assets } = parseText(result);
+    expect(assets).toHaveLength(2);
+  });
+
+  it("filters by type", async () => {
+    await handleRegisterAsset({
+      id: "img-1",
+      name: "banner",
+      type: "image",
+      path: "/data/assets/images/banner.png",
+      mimeType: "image/png",
+      sizeBytes: 51200,
+    });
+    await handleRegisterAsset({
+      id: "vid-1",
+      name: "clip",
+      type: "video",
+      path: "/data/assets/video/clip.mp4",
+      mimeType: "video/mp4",
+      sizeBytes: 5120000,
+    });
+
+    const images = parseText(await handleListAssets({ type: "image" }));
+    expect(images.assets).toHaveLength(1);
+    expect(images.assets[0].type).toBe("image");
+
+    const videos = parseText(await handleListAssets({ type: "video" }));
+    expect(videos.assets).toHaveLength(1);
+    expect(videos.assets[0].type).toBe("video");
+  });
+
+  it("filters by search (case-insensitive)", async () => {
+    await handleRegisterAsset({
+      id: "s-1",
+      name: "Hero Banner",
+      type: "image",
+      path: "/data/assets/images/hero.jpg",
+      mimeType: "image/jpeg",
+      sizeBytes: 81920,
+    });
+    await handleRegisterAsset({
+      id: "s-2",
+      name: "Background Music",
+      type: "audio",
+      path: "/data/assets/audio/bg.mp3",
+      mimeType: "audio/mpeg",
+      sizeBytes: 1024000,
+    });
+
+    const result = parseText(await handleListAssets({ search: "hero" }));
+    expect(result.assets).toHaveLength(1);
+    expect(result.assets[0].name).toBe("Hero Banner");
+  });
+
+  it("returns structured error for invalid type filter", async () => {
+    const result = await handleListAssets({ type: "spreadsheet" });
+    expect(result.isError).toBe(true);
+    const err = parseText(result);
+    expect(err.error.code).toBe("INVALID_ASSET_TYPE");
+  });
+});
+
+// ─── get_asset ───────────────────────────────────────────────────────
+
+describe("MCP: get_asset", () => {
+  it("returns an existing asset", async () => {
+    await handleRegisterAsset({
+      id: "ga-1",
+      name: "logo",
+      type: "image",
+      path: "/data/assets/images/logo.png",
+      mimeType: "image/png",
+      sizeBytes: 4096,
+    });
+    const result = await handleGetAsset({ assetId: "ga-1" });
+    expect(result.isError).toBeUndefined();
+    const asset = parseText(result);
+    expect(asset.id).toBe("ga-1");
+    expect(asset.name).toBe("logo");
+    expect(asset.type).toBe("image");
+  });
+
+  it("returns structured error for unknown asset", async () => {
+    const result = await handleGetAsset({ assetId: "ghost-asset" });
+    expect(result.isError).toBe(true);
+    const err = parseText(result);
+    expect(err.error.code).toBe("ASSET_NOT_FOUND");
+    expect(err.error.message).toContain("ghost-asset");
+  });
+});
+
+// ─── delete_asset ────────────────────────────────────────────────────
+
+describe("MCP: delete_asset", () => {
+  it("deletes an existing asset", async () => {
+    await handleRegisterAsset({
+      id: "del-1",
+      name: "old-photo",
+      type: "image",
+      path: "/data/assets/images/old-photo.jpg",
+      mimeType: "image/jpeg",
+      sizeBytes: 20480,
+    });
+
+    const result = await handleDeleteAsset({ assetId: "del-1" });
+    expect(result.isError).toBeUndefined();
+    const r = parseText(result);
+    expect(r.deleted).toBe(true);
+    expect(r.assetId).toBe("del-1");
+    expect(assetStore.has("del-1")).toBe(false);
+  });
+
+  it("returns structured error for unknown asset", async () => {
+    const result = await handleDeleteAsset({ assetId: "ghost-asset" });
+    expect(result.isError).toBe(true);
+    const err = parseText(result);
+    expect(err.error.code).toBe("ASSET_NOT_FOUND");
+  });
+
+  it("blocks deletion when asset is referenced by a project", async () => {
+    await handleRegisterAsset({
+      id: "in-use",
+      name: "referenced-image",
+      type: "image",
+      path: "/data/assets/images/ref.jpg",
+      mimeType: "image/jpeg",
+      sizeBytes: 40960,
+    });
+
+    // Create a project whose inputProps reference the asset id
+    await handleCreateProject({
+      templateId: "quote-card-sequence",
+      name: "Uses Asset",
+      inputProps: {
+        quotes: [{ text: "Hello", author: "in-use" }],
+      },
+    });
+
+    const result = await handleDeleteAsset({ assetId: "in-use" });
+    expect(result.isError).toBe(true);
+    const err = parseText(result);
+    expect(err.error.code).toBe("ASSET_IN_USE");
+    expect(err.error.details.projectIds).toBeDefined();
+    expect(assetStore.has("in-use")).toBe(true); // not deleted
+  });
+});
+
+// ─── register_asset ───────────────────────────────────────────────────
+
+describe("MCP: register_asset", () => {
+  it("registers a new asset and returns it", async () => {
+    const result = await handleRegisterAsset({
+      id: "reg-1",
+      name: "new-image",
+      type: "image",
+      path: "/data/assets/images/new.jpg",
+      mimeType: "image/jpeg",
+      sizeBytes: 8192,
+    });
+    expect(result.isError).toBeUndefined();
+    const asset = parseText(result);
+    expect(asset.id).toBe("reg-1");
+    expect(asset.name).toBe("new-image");
+    expect(asset.type).toBe("image");
+    expect(asset.sizeBytes).toBe(8192);
+    expect(assetStore.has("reg-1")).toBe(true);
+  });
+
+  it("returns structured error for duplicate id", async () => {
+    await handleRegisterAsset({
+      id: "dup-id",
+      name: "first",
+      type: "image",
+      path: "/data/assets/images/first.jpg",
+      mimeType: "image/jpeg",
+      sizeBytes: 1024,
+    });
+    const result = await handleRegisterAsset({
+      id: "dup-id",
+      name: "second",
+      type: "image",
+      path: "/data/assets/images/second.jpg",
+      mimeType: "image/jpeg",
+      sizeBytes: 2048,
+    });
+    expect(result.isError).toBe(true);
+    const err = parseText(result);
+    expect(err.error.code).toBe("ASSET_ALREADY_EXISTS");
+  });
+
+  it("returns structured error for invalid type", async () => {
+    const result = await handleRegisterAsset({
+      id: "bad-type",
+      name: "bad",
+      type: "spreadsheet",
+      path: "/data/assets/spreadsheet.xlsx",
+      mimeType: "application/vnd.ms-excel",
+      sizeBytes: 512,
+    });
+    expect(result.isError).toBe(true);
+    const err = parseText(result);
+    expect(err.error.code).toBe("INVALID_ASSET_TYPE");
   });
 });

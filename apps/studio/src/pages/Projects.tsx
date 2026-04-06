@@ -121,12 +121,14 @@ export const Projects: React.FC = () => {
   const getAspectRatioLabel = (preset: string) =>
     ASPECT_RATIO_PRESETS[preset as keyof typeof ASPECT_RATIO_PRESETS]?.label ?? preset;
 
+  const inputClasses = "px-4 py-2.5 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl text-sm text-gray-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-colors";
+
   return (
-    <div className="p-8 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-4 sm:p-8 max-w-5xl mx-auto">
+      <div className="flex items-center justify-between mb-6 sm:mb-8">
         <div>
-          <h1 className="text-3xl font-bold mb-1">Projects</h1>
-          <p className="text-zinc-400">Your saved projects</p>
+          <h1 className="text-2xl sm:text-3xl font-bold mb-1">Projects</h1>
+          <p className="text-gray-500 dark:text-zinc-400 text-sm sm:text-base">Your saved projects</p>
         </div>
         <Link
           to="/"
@@ -136,18 +138,18 @@ export const Projects: React.FC = () => {
         </Link>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-[1.6fr,1fr,1fr] mb-6">
+      <div className="grid gap-3 sm:grid-cols-[1.6fr,1fr,1fr] mb-5">
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by project or template…"
-          className="px-4 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-600"
+          className={`${inputClasses} placeholder-gray-400 dark:placeholder-zinc-500`}
         />
         <select
           value={templateFilter}
           onChange={(e) => setTemplateFilter(e.target.value)}
-          className="px-4 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-600"
+          className={inputClasses}
         >
           <option value="all">All templates</option>
           {templateOptions.map((templateId) => (
@@ -159,17 +161,17 @@ export const Projects: React.FC = () => {
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-          className="px-4 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-600"
+          className={inputClasses}
         >
-          <option value="updated">Sort by last modified</option>
-          <option value="created">Sort by created</option>
-          <option value="name">Sort by name</option>
+          <option value="updated">Last modified</option>
+          <option value="created">Created</option>
+          <option value="name">Name</option>
         </select>
       </div>
 
       {!loading && !error && recentProjects.length > 0 && (
-        <div className="mb-6 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-400 mb-3">
+        <div className="mb-5 rounded-2xl border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/70 p-4 transition-colors">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-zinc-400 mb-3">
             Recent
           </h2>
           <div className="flex flex-wrap gap-2">
@@ -177,10 +179,10 @@ export const Projects: React.FC = () => {
               <button
                 key={project.id}
                 onClick={() => navigate(`/editor/${project.templateId}/${project.id}`)}
-                className="px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-left transition-colors"
+                className="px-3 py-2 rounded-xl bg-white dark:bg-zinc-800 border border-gray-200 dark:border-transparent hover:bg-gray-100 dark:hover:bg-zinc-700 text-left transition-colors shadow-sm"
               >
-                <div className="text-sm font-medium text-zinc-100">{project.name}</div>
-                <div className="text-[11px] text-zinc-500 mt-0.5">
+                <div className="text-sm font-medium text-gray-900 dark:text-zinc-100">{project.name}</div>
+                <div className="text-[11px] text-gray-500 dark:text-zinc-500 mt-0.5">
                   {templates[project.templateId]?.name ?? project.templateId}
                 </div>
               </button>
@@ -190,11 +192,11 @@ export const Projects: React.FC = () => {
       )}
 
       {loading && (
-        <div className="text-zinc-400 text-center py-20">Loading…</div>
+        <div className="text-gray-400 dark:text-zinc-400 text-center py-20">Loading…</div>
       )}
 
       {error && (
-        <div className="text-red-400 bg-red-900/20 rounded-xl p-4 text-sm">
+        <div className="text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-transparent rounded-xl p-4 text-sm">
           {error}{" "}
           <button onClick={fetchProjects} className="underline ml-2">
             Retry
@@ -203,7 +205,7 @@ export const Projects: React.FC = () => {
       )}
 
       {!loading && !error && projects.length === 0 && (
-        <div className="text-center py-20 text-zinc-500">
+        <div className="text-center py-20 text-gray-500 dark:text-zinc-500">
           <p className="text-lg mb-4">No saved projects yet</p>
           <Link
             to="/"
@@ -215,49 +217,49 @@ export const Projects: React.FC = () => {
       )}
 
       {!loading && !error && projects.length > 0 && filteredProjects.length === 0 && (
-        <div className="text-center py-20 text-zinc-500">
+        <div className="text-center py-20 text-gray-500 dark:text-zinc-500">
           <p className="text-lg mb-2">No projects match your filters</p>
-          <p className="text-sm text-zinc-600">Try a different search or template filter.</p>
+          <p className="text-sm text-gray-400 dark:text-zinc-600">Try a different search or template filter.</p>
         </div>
       )}
 
       {!loading && !error && filteredProjects.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-2 sm:space-y-3">
           {filteredProjects.map((project) => (
             <div
               key={project.id}
-              className="flex items-center gap-4 p-4 bg-zinc-900 border border-zinc-800 rounded-xl hover:border-zinc-700 transition-colors"
+              className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl hover:border-gray-300 dark:hover:border-zinc-700 transition-colors shadow-sm"
             >
               <div className="flex-1 min-w-0">
-                <h2 className="font-semibold text-zinc-100 truncate">{project.name}</h2>
-                <p className="text-sm text-zinc-500 mt-0.5">
-                  Template: {templates[project.templateId]?.name ?? project.templateId} &nbsp;·&nbsp;
+                <h2 className="font-semibold text-gray-900 dark:text-zinc-100 truncate text-sm sm:text-base">{project.name}</h2>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-zinc-500 mt-0.5">
+                  {templates[project.templateId]?.name ?? project.templateId} &nbsp;·&nbsp;
                   {getAspectRatioLabel(project.aspectRatio.preset)} &nbsp;·&nbsp;
                   v{project.version}
                 </p>
-                <p className="text-xs text-zinc-600 mt-0.5">
+                <p className="text-xs text-gray-400 dark:text-zinc-600 mt-0.5">
                   Updated {new Date(project.updatedAt).toLocaleString()}
                 </p>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                 <button
                   onClick={() => navigate(`/editor/${project.templateId}/${project.id}`)}
-                  className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm rounded-lg transition-colors"
+                  className="px-2.5 sm:px-3 py-1.5 bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-700 dark:text-zinc-300 text-xs sm:text-sm rounded-lg transition-colors"
                 >
                   Open
                 </button>
                 <button
                   onClick={() => handleDuplicate(project)}
                   disabled={busyProjectId === project.id}
-                  className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-zinc-300 text-sm rounded-lg transition-colors"
+                  className="hidden sm:block px-3 py-1.5 bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 disabled:opacity-50 text-gray-700 dark:text-zinc-300 text-sm rounded-lg transition-colors"
                 >
                   Duplicate
                 </button>
                 <button
                   onClick={() => handleDelete(project.id)}
                   disabled={busyProjectId === project.id}
-                  className="px-3 py-1.5 bg-zinc-800 hover:bg-red-900 disabled:opacity-50 text-zinc-400 hover:text-red-300 text-sm rounded-lg transition-colors"
+                  className="px-2.5 sm:px-3 py-1.5 bg-gray-100 dark:bg-zinc-800 hover:bg-red-50 dark:hover:bg-red-900 disabled:opacity-50 text-gray-500 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-300 text-xs sm:text-sm rounded-lg transition-colors"
                 >
                   Delete
                 </button>
