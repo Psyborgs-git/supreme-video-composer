@@ -85,8 +85,9 @@ if (isProduction) {
 // ─── Start ────────────────────────────────────────────────────────────────────
 
 const PORT = isProduction ? Number(process.env.PORT ?? 3000) : 3001;
+const HOST = process.env.HOST ?? (isProduction ? "0.0.0.0" : "127.0.0.1");
 
-const server = serve({ fetch: app.fetch, port: PORT }, () => {
+const server = serve({ fetch: app.fetch, port: PORT, hostname: HOST }, () => {
   console.log(`[studio-api] listening on http://localhost:${PORT}`);
   console.log(`[studio-api] mode: ${isProduction ? "production" : "development"}`);
   console.log(`[studio-api] compositions bundle: ${COMPOSITIONS_ENTRY}`);

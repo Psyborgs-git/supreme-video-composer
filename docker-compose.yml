@@ -1,7 +1,6 @@
 services:
   studio:
     build: .
-    image: media-studio:latest
     ports:
       - "3000:3000"
     volumes:
