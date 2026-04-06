@@ -820,7 +820,7 @@ export async function handleCreateTemplate(args: {
       tags: [category],
       defaultDurationInFrames: defaultDurationFrames,
       defaultFps: defaultFps,
-      supportedAspectRatios: supportedAspectRatios as any[],
+      supportedAspectRatios: supportedAspectRatios as AspectRatioPreset[],
       propsSchema: dynamicSchema,
       defaultProps,
       thumbnailFrame: 0,
@@ -913,7 +913,7 @@ export async function handleUpdateTemplateComposition(args: {
 
   const warnings: string[] = [];
 
-  // Basic validation of the composition code
+  // Basic heuristic check — not an AST parse, just a quick sanity test
   if (!compositionCode.includes("useCurrentFrame") && !compositionCode.includes("useVideoConfig")) {
     warnings.push("Composition does not use useCurrentFrame or useVideoConfig — is this intentional?");
   }

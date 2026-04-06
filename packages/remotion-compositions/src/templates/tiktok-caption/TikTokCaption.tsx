@@ -59,8 +59,8 @@ const CaptionPage: React.FC<{
   // Determine which word is "active" based on frame position within the caption
   const captionDuration = caption.endFrame - caption.startFrame;
   const words = caption.text.split(/\s+/);
-  const msPerWord = captionDuration > 0 ? captionDuration / words.length : 1;
-  const activeWordIndex = Math.floor(frame / msPerWord);
+  const framesPerWord = captionDuration > 0 ? captionDuration / words.length : 1;
+  const activeWordIndex = Math.floor(frame / framesPerWord);
 
   // Position
   const bottomOffset =

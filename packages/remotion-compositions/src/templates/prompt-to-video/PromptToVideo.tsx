@@ -182,12 +182,7 @@ const SceneComponent: React.FC<{
 
   // Text position
   const textTop = textPosition === "top" ? height * 0.08 : undefined;
-  const textBottom =
-    textPosition === "bottom"
-      ? height * 0.08
-      : textPosition === "center"
-        ? undefined
-        : undefined;
+  const textBottom = textPosition === "bottom" ? height * 0.08 : undefined;
   const textCenter = textPosition === "center";
 
   return (
