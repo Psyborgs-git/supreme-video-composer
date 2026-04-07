@@ -12,6 +12,7 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    host: "0.0.0.0",
     proxy: {
       // Proxy audio fetches so @remotion/media-utils can analyse CORS-restricted files in dev
       "/audio-proxy": {

@@ -28,6 +28,7 @@ import {
   QUALITY_CRF,
   VideoCodecSchema,
   QualityPresetSchema,
+  AssetTypeSchema,
   normalizeAspectRatioConfig,
 } from "@studio/shared-types";
 import type { StorageConfig } from "./storage";
@@ -39,6 +40,7 @@ import {
   loadAssetsFromDisk,
   loadProjectsFromDisk,
   persistProject,
+  registerExistingAsset,
   renameAsset,
   saveUploadedAssets,
 } from "./storage";
@@ -132,6 +134,12 @@ export function createApp(
     return c.json({ assets });
   });
 
+  app.get("/api/assets/:id", (c) => {
+    const asset = assetStore.get(c.req.param("id"));
+    if (!asset) return c.json({ error: "Asset not found" }, 404);
+    return c.json(asset);
+  });
+
   app.post("/api/assets", async (c) => {
     const formData = await c.req.formData();
     const rawFiles = formData
@@ -156,6 +164,50 @@ export function createApp(
         { error: error instanceof Error ? error.message : "Failed to upload assets" },
         400,
       );
+    }
+  });
+
+  app.post("/api/assets/register", async (c) => {
+    const body = await c.req.json<{
+      id: string;
+      name: string;
+      type: string;
+      path: string;
+      mimeType: string;
+      sizeBytes: number;
+    }>().catch(() => null);
+
+    if (!body) {
+      return c.json({ error: "Invalid JSON body" }, 400);
+    }
+
+    const parsedType = AssetTypeSchema.safeParse(body.type);
+    if (!parsedType.success) {
+      return c.json({ error: "Invalid asset type" }, 400);
+    }
+
+    if (!body.id || !body.name?.trim() || !body.path || !body.mimeType || body.sizeBytes < 0) {
+      return c.json({ error: "id, name, type, path, mimeType, and sizeBytes are required" }, 400);
+    }
+
+    try {
+      const asset = registerExistingAsset(storageConfig.assetsDir, assetStore, {
+        id: body.id,
+        name: body.name,
+        type: parsedType.data,
+        path: body.path,
+        mimeType: body.mimeType,
+        sizeBytes: body.sizeBytes,
+      });
+      return c.json(asset, 201);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to register asset";
+      const status = message.includes("already exists")
+        ? 409
+        : message.includes("not found")
+          ? 404
+          : 400;
+      return c.json({ error: message }, status as 400 | 404 | 409);
     }
   });
 
@@ -442,6 +494,18 @@ export function createApp(
     });
 
     return c.json(jobSnapshot, 202);
+  });
+
+  app.get("/api/renders", (c) => {
+    const projectId = c.req.query("projectId");
+    const status = c.req.query("status");
+
+    let jobs = Array.from(renderJobStore.values());
+    if (projectId) jobs = jobs.filter((job) => job.projectId === projectId);
+    if (status) jobs = jobs.filter((job) => job.status === status);
+
+    jobs.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return c.json({ jobs });
   });
 
   app.get("/api/renders/:jobId", (c) => {

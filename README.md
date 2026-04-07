@@ -200,8 +200,9 @@ bun run type-check                # TypeScript type validation
 bun run test                      # Run all test suites
 npm run test                      # Alternative with npm
 
-# Rendering
-bun run --filter '@studio/mcp-server' start     # Start MCP server (stdio)
+# MCP
+npm run mcp:stdio                  # Start the local stdio MCP server
+npm run mcp:http                   # Start the HTTP MCP server on :9090
 ```
 
 ## 📚 Documentation
@@ -212,7 +213,7 @@ Each documentation file covers a specific aspect:
 |----------|---------|
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, component roles, data flow |
 | [GETTING_STARTED.md](docs/GETTING_STARTED.md) | Installation, configuration, first steps |
-| [TEMPLATES.md](docs/TEMPLATES.md) | Details on all 6 templates, customization |
+| [TEMPLATES.md](docs/TEMPLATES.md) | Details on all 8 templates, customization |
 | [MCP_API.md](docs/MCP_API.md) | AI server tools, integration examples |
 | [EXPORT_FORMATS.md](docs/EXPORT_FORMATS.md) | Codec options, quality settings, rendering |
 | [DEVELOPMENT.md](docs/DEVELOPMENT.md) | Code style, adding templates, extending |
@@ -233,13 +234,22 @@ Each template is fully customizable with inputProps. See [TEMPLATES.md](docs/TEM
 
 ## 🤖 MCP Integration
 
-Run the MCP server to integrate with AI assistants:
+Run the MCP server either as a local stdio process or as a long-running HTTP endpoint:
 
 ```bash
-bun run --filter '@studio/mcp-server' start
+# Local client-spawned MCP
+npm run mcp:stdio
+
+# Long-running HTTP MCP server
+npm run mcp:http
+
+# Full Studio + MCP stack in Docker Compose
+docker compose up --build studio mcp
 ```
 
-Tools available:
+The HTTP endpoint is `http://localhost:9090/mcp`, and `http://localhost:9090/health` is available for readiness checks. In Docker Compose, the MCP service talks to the Studio backend over the internal network so project, asset, and render tools use the same persisted app state as the web UI.
+
+Tools available include:
 - `list_templates` — Get all template info
 - `create_project` — Create new project from template
 - `render_project` — Queue render job

@@ -215,6 +215,46 @@ export function renameAsset(
   return asset;
 }
 
+export function registerExistingAsset(
+  assetsDir: string | undefined,
+  assetStore: Map<string, Asset>,
+  input: {
+    id: string;
+    name: string;
+    type: AssetType;
+    path: string;
+    mimeType: string;
+    sizeBytes: number;
+  },
+) {
+  if (assetStore.has(input.id)) {
+    throw new Error(`Asset "${input.id}" already exists`);
+  }
+
+  if (!fs.existsSync(input.path)) {
+    throw new Error(`Asset file not found at ${input.path}`);
+  }
+
+  const asset: Asset = {
+    id: input.id,
+    name: sanitizeSegment(input.name) || input.name,
+    type: input.type,
+    path: input.path,
+    mimeType: input.mimeType,
+    size: input.sizeBytes,
+    sizeBytes: input.sizeBytes,
+    extension: getExtension(input.path),
+    url: "",
+    metadata: {},
+    createdAt: new Date().toISOString(),
+  };
+
+  asset.url = `/api/assets/${asset.id}/content`;
+  assetStore.set(asset.id, asset);
+  persistAssetRegistry(assetsDir, assetStore);
+  return asset;
+}
+
 export function deleteAssetFromDisk(
   assetsDir: string | undefined,
   assetStore: Map<string, Asset>,

@@ -144,8 +144,8 @@ remotion-studio/
 If you're using the MCP integration:
 
 ```bash
-# Start MCP server in background
-bun run --filter '@studio/mcp-server' start &
+# Start HTTP MCP server in background
+npm run mcp:http &
 
 # Call via Claude, Cursor, or MCP client:
 # Tool: create_project
@@ -374,8 +374,8 @@ See [MCP_API.md](MCP_API.md) for MCP server setup.
 ### Rendering via Command Line
 
 ```bash
-# Using MCP server
-bun run --filter '@studio/mcp-server' start
+# Using the long-running HTTP MCP server
+npm run mcp:http
 
 # Then call tools programmatically
 ```

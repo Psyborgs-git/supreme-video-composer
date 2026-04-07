@@ -4,19 +4,28 @@ The Media Studio MCP (Model Context Protocol) server enables AI assistants like 
 
 ## Overview
 
-**Transport**: stdio (stdin/stdout)
+**Transport**: stdio or Streamable HTTP (`/mcp`)
 
 **Usage**: Connect via Claude, Cursor, or any MCP-compatible client
 
-**Available Tools**: 8 tools for template management, project CRUD, and rendering
+**Available Tools**: Template, project, asset, render, caption, prompt, and template-authoring tools
 
 ### Starting the Server
 
 ```bash
-bun run --filter '@studio/mcp-server' start
+# Local client-spawned stdio transport
+npm run mcp:stdio
+
+# Long-running HTTP transport
+npm run mcp:http
+
+# Full Studio + MCP stack
+docker compose up --build studio mcp
 ```
 
-The server will listen on stdin/stdout, ready for MCP tool calls.
+The HTTP server listens on `http://localhost:9090/mcp` and exposes `GET /health` for readiness checks.
+
+When `STUDIO_API_BASE_URL` is set, project, asset, and render tools proxy to the real Studio backend. Without it, the MCP package falls back to its local in-memory handlers for standalone usage.
 
 ---
 
@@ -44,7 +53,7 @@ The server will listen on stdin/stdout, ready for MCP tool calls.
     "name": "Beat-Synced Visualizer",
     ...
   }
-  // ... 5 templates total
+  // ... remaining registered templates
 ]
 ```
 
@@ -518,23 +527,24 @@ For production, consider:
 
 ---
 
-## Future Tools (Planned)
+## Future Extensions
 
-- `preview_project` — Generate preview URL
-- `list_assets` — Scan available assets
-- `upload_asset` — Add new asset
-- `cancel_render` — Stop in-progress render
-- `export_project` — Multi-format batch export
-- `template_customization` — Advanced schema modifications
+- `upload_asset_content` — Stream binary asset uploads directly through MCP
+- `batch_render` — Queue multiple projects in one call
+- `template_versions` — Inspect and roll back generated template variants
 
 ---
 
 ## Configuration
 
-No configuration needed. Server starts with:
-- In-memory stores
-- stdio transport
-- Default asset paths (/assets, /projects, /exports)
+Common environment variables:
+
+- `MCP_TRANSPORT` / `--transport` — `stdio`, `http`, or `auto`
+- `MCP_HOST` / `MCP_PORT` — bind address for the HTTP MCP server
+- `STUDIO_API_BASE_URL` — Studio API base URL used for project/asset/render tools
+- `STUDIO_PUBLIC_URL` — public browser URL used when returning preview links
+
+If `STUDIO_API_BASE_URL` is omitted, the MCP server keeps using its local fallback state instead of the Studio backend.
 
 ---
 
@@ -543,21 +553,26 @@ No configuration needed. Server starts with:
 **Server won't start**:
 ```bash
 # Check dependencies
-bun install
+npm install
 
 # Verify imports
-bun run --filter '@studio/mcp-server' type-check
+npm run --workspace @studio/mcp-server type-check
 ```
+
+- For HTTP mode, check `http://localhost:9090/health`
+- For Docker Compose, confirm `STUDIO_API_BASE_URL=http://studio:3000`
 
 **Tool returns error**:
 1. Check inputProps schema matches template
 2. Validate aspect ratio is from preset list
 3. Review error message for specific field
+4. If the tool hits app state, verify the Studio backend is reachable
 
 **Renders hang**:
 - Server processes renders sequentially
 - Check CPU/memory availability
 - Review FFmpeg logs if available
+- Confirm the MCP server is configured to reach the Studio API in HTTP mode
 
 ---
 

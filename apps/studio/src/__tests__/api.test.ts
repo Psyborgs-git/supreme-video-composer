@@ -402,6 +402,8 @@ describe("DELETE /api/projects/:id", () => {
 
     ctrl.complete();
     await wait(15);
+    ctrl.complete();
+    await wait(15);
   });
 });
 
@@ -475,6 +477,54 @@ describe("Assets API", () => {
     const deleteRes = await app.request(`/api/assets/${asset.id}`, { method: "DELETE" });
     expect(deleteRes.status).toBe(200);
     expect(await deleteRes.json()).toEqual({ success: true });
+  });
+
+  it("returns a single asset by id", async () => {
+    const storage = makeStorageConfig();
+    const { app } = createApp(new RenderQueue(), "*", storage);
+    const uploadForm = new FormData();
+    uploadForm.append("files", new File(["fake-image"], "single.png", { type: "image/png" }));
+
+    const uploadRes = await app.request("/api/assets", {
+      method: "POST",
+      body: uploadForm,
+    });
+    const asset = (await uploadRes.json()).assets[0];
+
+    const getRes = await app.request(`/api/assets/${asset.id}`);
+    expect(getRes.status).toBe(200);
+    const fetched = await getRes.json();
+    expect(fetched.id).toBe(asset.id);
+    expect(fetched.mimeType).toBe("image/png");
+  });
+
+  it("registers an existing asset from disk", async () => {
+    const storage = makeStorageConfig();
+    const { app } = createApp(new RenderQueue(), "*", storage);
+    const existingPath = path.join(storage.assetsDir!, "registered.png");
+    fs.mkdirSync(path.dirname(existingPath), { recursive: true });
+    fs.writeFileSync(existingPath, "registered");
+
+    const registerRes = await app.request("/api/assets/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: "registered-asset",
+        name: "registered-asset",
+        type: "image",
+        path: existingPath,
+        mimeType: "image/png",
+        sizeBytes: 10,
+      }),
+    });
+
+    expect(registerRes.status).toBe(201);
+    const asset = await registerRes.json();
+    expect(asset.id).toBe("registered-asset");
+    expect(asset.path).toBe(existingPath);
+
+    const fetched = await app.request("/api/assets/registered-asset").then((res) => res.json());
+    expect(fetched.id).toBe("registered-asset");
   });
 
   it("persists assets across app instances when storage is configured", async () => {
@@ -590,6 +640,35 @@ describe("POST /api/projects/:id/render — job creation", () => {
     const { job } = await startRender(app, project.id);
 
     expect(job.projectId).toBe(project.id);
+  });
+});
+
+describe("GET /api/renders", () => {
+  it("lists render jobs and supports projectId filtering", async () => {
+    const q = new RenderQueue();
+    const ctrl = makeControlledRender();
+    q.setRenderFunction(ctrl.fn);
+    const { app } = createApp(q);
+
+    const firstProject = await createProject(app, "First");
+    const secondProject = await createProject(app, "Second");
+    const firstRender = await startRender(app, firstProject.id);
+    const secondRender = await startRender(app, secondProject.id);
+    await wait(15);
+
+    const allJobs = await app.request("/api/renders").then((res) => res.json());
+    expect(allJobs.jobs).toHaveLength(2);
+
+    const filteredJobs = await app
+      .request(`/api/renders?projectId=${firstProject.id}`)
+      .then((res) => res.json());
+    expect(filteredJobs.jobs).toHaveLength(1);
+    expect(filteredJobs.jobs[0].projectId).toBe(firstProject.id);
+    expect(filteredJobs.jobs[0].id).toBe(firstRender.job.id);
+    expect(allJobs.jobs.some((job: { id: string }) => job.id === secondRender.job.id)).toBe(true);
+
+    ctrl.complete();
+    await wait(15);
   });
 });
 

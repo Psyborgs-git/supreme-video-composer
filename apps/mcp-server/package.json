@@ -9,9 +9,15 @@
   },
   "scripts": {
     "build": "tsc",
-    "dev": "bun --watch src/index.ts",
-    "start": "bun src/index.ts",
-    "test": "vitest run",
+    "dev": "bun --watch src/index.ts --transport=auto",
+    "dev:http": "bun --watch src/index.ts --transport=http",
+    "dev:stdio": "bun --watch src/index.ts --transport=stdio",
+    "start": "bun src/index.ts --transport=auto",
+    "start:http": "bun src/index.ts --transport=http",
+    "start:stdio": "bun src/index.ts --transport=stdio",
+    "smoke:http": "bun scripts/smoke-http.ts",
+    "test": "vitest run src/__tests__/runtime.test.ts src/__tests__/tools.test.ts src/__tests__/transport.test.ts",
+    "test:e2e": "vitest run src/__tests__/process-e2e.test.ts --pool=forks",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
@@ -22,6 +28,7 @@
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@types/node": "^25.5.2",
     "typescript": "^5.5.0",
     "vitest": "^2.0.0"
   }

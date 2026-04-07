@@ -9,6 +9,9 @@
     "dev": "npm run --workspace @studio/app dev",
     "dev:all": "npm run build:types && npm run --workspace @studio/shared-types dev & npm run --workspace @studio/renderer dev & npm run --workspace @studio/app dev & wait",
     "dev:mcp": "npm run --workspace @studio/mcp-server dev",
+    "mcp:http": "npm run --workspace @studio/mcp-server start:http",
+    "mcp:stdio": "npm run --workspace @studio/mcp-server start:stdio",
+    "smoke:mcp:http": "npm run --workspace @studio/mcp-server smoke:http",
     "build": "npm run --workspace @studio/shared-types build && npm run --workspace @studio/renderer build && npm run --workspace @studio/mcp-server build && npm run --workspace @studio/app build",
     "build:types": "npm run --workspace @studio/shared-types build",
     "build:renderer": "npm run --workspace @studio/renderer build",
@@ -19,6 +22,7 @@
     "test:registry": "npm run --workspace @studio/template-registry test",
     "test:renderer": "npm run --workspace @studio/renderer test",
     "test:mcp": "npm run --workspace @studio/mcp-server test",
+    "test:mcp:e2e": "npm run --workspace @studio/mcp-server test:e2e",
     "studio": "npm run --workspace @studio/remotion-compositions studio",
     "type-check": "npm run type-check --workspaces --if-present"
   },

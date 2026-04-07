@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1.7
-
 # ─── Stage 1: Bun toolchain ───────────────────────────────────────
 # Copy the Bun binary into Node-based stages so installs/builds are fast while
 # the final runtime still has full Node compatibility available if needed.
@@ -27,8 +25,7 @@ COPY packages/remotion-compositions/package.json packages/remotion-compositions/
 COPY packages/template-registry/package.json packages/template-registry/
 COPY packages/renderer/package.json packages/renderer/
 
-RUN --mount=type=cache,target=/root/.bun/install/cache \
-    bun install --frozen-lockfile --ignore-scripts
+RUN bun install --ignore-scripts
 
 # ─── Stage 3: Builder ────────────────────────────────────────────
 FROM deps AS builder
@@ -54,59 +51,75 @@ RUN cd apps/mcp-server && bun run build
 COPY apps/studio/ apps/studio/
 RUN cd apps/studio && bun run build
 
-# ─── Stage 4: Runner (production image) ──────────────────────────
-FROM node:22-bookworm-slim AS runner
+# ─── Stage 4: Runtime base ───────────────────────────────────────
+FROM node:22-bookworm-slim AS runtime-base
 
 WORKDIR /app
 
 COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
 
-# System dependencies required for Remotion rendering (Chromium + FFmpeg)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN groupadd --system studio && useradd --system --create-home --gid studio studio
+
+ENV NODE_ENV=production
+ENV ASSETS_DIR=/data/assets
+ENV PROJECTS_DIR=/data/projects
+ENV EXPORTS_DIR=/data/exports
+ENV HOME=/home/studio
+
+# ─── Stage 5: Studio runner ──────────────────────────────────────
+FROM runtime-base AS studio-runner
+
+# System dependencies required for Remotion rendering.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     chromium \
     ffmpeg \
     fonts-noto-color-emoji \
     fonts-freefont-ttf \
     fonts-liberation \
-    ca-certificates \
-    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Tell Remotion / Puppeteer to use the system Chromium
+# Tell Remotion / Puppeteer to use the system Chromium.
 ENV PUPPETEER_SKIP_DOWNLOAD=true
 ENV REMOTION_CHROME_EXECUTABLE=/usr/bin/chromium
 ENV CHROME_PATH=/usr/bin/chromium
+ENV PORT=3000
 
-# Create non-root user
-RUN groupadd --system studio && useradd --system --create-home --gid studio studio
+COPY --from=deps --chown=studio:studio /app/node_modules ./node_modules
+COPY --from=builder --chown=studio:studio /app/package.json ./
+COPY --from=builder --chown=studio:studio /app/tsconfig.base.json ./
+COPY --from=builder --chown=studio:studio /app/packages/ ./packages/
+COPY --from=builder --chown=studio:studio /app/apps/ ./apps/
 
-# Copy all node_modules (root hoisted + workspace-local) from deps stage,
-# then copy built source from builder stage.
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/tsconfig.base.json ./
-COPY --from=builder /app/packages/ ./packages/
-COPY --from=builder /app/apps/ ./apps/
-
-# Create writable directories for runtime data
 RUN mkdir -p /data/assets /data/projects /data/exports \
     && chown -R studio:studio /data /home/studio
 
-# Expose ports
-# 3000 — Studio UI + API (production mode serves both)
 EXPOSE 3000
 
-# Environment
-ENV NODE_ENV=production
-ENV PORT=3000
-ENV ASSETS_DIR=/data/assets
-ENV PROJECTS_DIR=/data/projects
-ENV EXPORTS_DIR=/data/exports
-ENV HOME=/home/studio
-
-# Run as non-root user
 USER studio
-
-# Run the production server with Bun, which natively handles the workspace's
-# TypeScript / TSX import graph.
 CMD ["bun", "apps/studio/server.ts"]
+
+# ─── Stage 6: MCP runner ─────────────────────────────────────────
+FROM runtime-base AS mcp-runner
+
+ENV MCP_HOST=0.0.0.0
+ENV MCP_PORT=9090
+
+COPY --from=deps --chown=studio:studio /app/node_modules ./node_modules
+COPY --from=builder --chown=studio:studio /app/package.json ./
+COPY --from=builder --chown=studio:studio /app/tsconfig.base.json ./
+COPY --from=builder --chown=studio:studio /app/packages/ ./packages/
+COPY --from=builder --chown=studio:studio /app/apps/ ./apps/
+
+RUN mkdir -p /data/assets /data/projects /data/exports \
+    && chown -R studio:studio /data /home/studio
+
+EXPOSE 9090
+
+USER studio
+CMD ["bun", "apps/mcp-server/src/index.ts", "--transport=http"]

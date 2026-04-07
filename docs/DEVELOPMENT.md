@@ -177,7 +177,7 @@ bun run dev
 
 ### New MCP Tool
 
-1. **Handler** → `apps/mcp-server/src/handlers.ts`:
+1. **Logic** → `apps/mcp-server/src/handlers.ts` for local tools, or `apps/mcp-server/src/create-server.ts` for runtime-backed Studio API wrappers:
 ```typescript
 export async function handleMyTool(args: { input: string }): Promise<ToolResult> {
   // Your logic
@@ -185,7 +185,7 @@ export async function handleMyTool(args: { input: string }): Promise<ToolResult>
 }
 ```
 
-2. **Register** → `apps/mcp-server/src/index.ts`:
+2. **Register** → `apps/mcp-server/src/create-server.ts`:
 ```typescript
 server.tool(
   "my_tool",

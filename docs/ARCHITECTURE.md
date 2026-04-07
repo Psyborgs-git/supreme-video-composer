@@ -102,9 +102,16 @@
 
 **Purpose**: AI-native API for programmatic video creation.
 
-**Stack**: Node.js + MCP SDK + stdio transport + TypeScript
+**Stack**: Node.js + MCP SDK + transport-aware stdio/Streamable HTTP bootstrap + TypeScript
 
-**Tool Handlers** (in `handlers.ts`):
+**Key modules**:
+- `src/index.ts` — bootstrap and transport selection
+- `src/create-server.ts` — tool registration
+- `src/runtime.ts` — env/config resolution
+- `src/http-server.ts` — `/mcp` and `/health` HTTP server
+- `src/studio-api-client.ts` — Studio backend adapter for app-backed tools
+
+**Tool surface**:
 - `list_templates()` — Returns array of TemplateManifest objects
 - `create_project(templateId, name, inputProps?, aspectRatio?)` — Creates and saves project
 - `update_project(projectId, name?, inputProps?, aspectRatio?)` — Mutates existing project
@@ -114,10 +121,10 @@
 - `get_render_status(jobId)` — Returns job status and progress
 - `export_formats()` — Returns available codec/quality options
 
-**Storage**:
-- In-memory `Map<string, Project>` for projects
-- In-memory `Map<string, RenderJob>` for render jobs
-- Projects persisted to `/projects/{id}.json` on save
+**State model**:
+- Project, asset, and render tools use the Studio API as the source of truth when `STUDIO_API_BASE_URL` is configured
+- Local utility tools continue to run inside the MCP package
+- Standalone runs without `STUDIO_API_BASE_URL` fall back to the local in-memory handlers
 
 **Error Handling**: All inputs validated with Zod. Invalid input returns `{ isError: true, content: [{ text: "error message" }] }`
 
@@ -305,11 +312,11 @@ templates.forEach(({ id, manifest, component }) => {
 
 ### Additional MCP Tools
 
-1. Add handler function to `apps/mcp-server/src/handlers.ts`
-2. Register tool in `apps/mcp-server/src/index.ts`
+1. Add handler logic in `apps/mcp-server/src/handlers.ts` or a runtime-backed wrapper in `apps/mcp-server/src/create-server.ts`
+2. Register the tool in `apps/mcp-server/src/create-server.ts`
 3. Add Zod schema for inputs
 4. Export with `server.tool()` call
-5. Write tests in `src/__tests__/tools.test.ts`
+5. Write tests in `src/__tests__/tools.test.ts` and `transport.test.ts` if transport behavior changes
 
 ## Dependencies Between Packages
 

@@ -27,8 +27,8 @@ bun run build
 ```
 
 Output:
-- `packages/studio/dist/` → Web bundle
-- `packages/mcp-server/dist/` → MCP server
+- `apps/studio/dist/` → Web bundle
+- `apps/mcp-server/dist/` → MCP server
 - `packages/remotion-compositions/dist/` → Remotion renderer
 - Other packages compiled to `dist/`
 
@@ -74,45 +74,39 @@ vercel deploy apps/studio
 
 ---
 
-### Option 2: Docker (Full Stack)
+### Option 2: Docker Compose (Studio + HTTP MCP)
 
-For self-hosted deployment with MCP server + UI + renderer.
+The repository ships a single production image that can run either the Studio app or the MCP server. `docker-compose.yml` starts both services from that image:
 
-#### Dockerfile
-
-```dockerfile
-FROM oven/bun:latest
-
-WORKDIR /app
-
-# Install FFmpeg (required for rendering)
-RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
-
-# Copy source
-COPY . .
-
-# Install dependencies
-RUN bun install --frozen-lockfile
-
-# Build
-RUN bun run build
-
-# Expose ports
-EXPOSE 5173 9090
-
-# MCP server runs on 9090, UI on 5173
-CMD ["bun", "run", "start:server"]
-```
+- `studio` serves the UI and REST API on `http://localhost:3000`
+- `mcp` serves Streamable HTTP MCP on `http://localhost:9090/mcp`
+- `mcp` health checks `http://localhost:9090/health`
+- `mcp` talks to the Studio backend through `STUDIO_API_BASE_URL=http://studio:3000`
 
 **Build and Run**:
 ```bash
-docker build -t remotion-studio:latest .
-docker run -p 5173:5173 -p 9090:9090 remotion-studio:latest
+docker compose up --build -d
+docker compose ps
 ```
 
 Access:
-- Web UI: `http://localhost:5173`
-- MCP server: `http://localhost:9090`
+- Web UI + API: `http://localhost:3000`
+- MCP health: `http://localhost:9090/health`
+- MCP endpoint: `http://localhost:9090/mcp`
+
+**Manual HTTP MCP container**:
+```bash
+docker build -t remotion-studio:latest .
+docker run --rm \
+  -p 9090:9090 \
+  -e NODE_ENV=production \
+  -e MCP_HOST=0.0.0.0 \
+  -e MCP_PORT=9090 \
+  -e STUDIO_API_BASE_URL=http://host.docker.internal:3000 \
+  -e STUDIO_PUBLIC_URL=http://host.docker.internal:3000 \
+  remotion-studio:latest \
+  bun apps/mcp-server/src/index.ts --transport=http
+```
 
 ---
 

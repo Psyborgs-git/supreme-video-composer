@@ -4,6 +4,7 @@
     "outDir": "./dist",
     "rootDir": ".",
     "noEmit": true,
+    "types": ["node"],
     "paths": {
       "@/*": ["./src/*"]
     }
