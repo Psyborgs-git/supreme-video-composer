@@ -26,6 +26,8 @@ export interface SceneClipResult {
   url: string;
   mimeType: string;
   durationSeconds?: number;
+  /** Error message if this clip's generation failed */
+  error?: string;
 }
 
 /**
@@ -49,8 +51,16 @@ export async function runSceneClipsPipeline(
           height: scene.height,
         });
         return result;
-      } catch {
-        return { url: "", mimeType: "video/mp4" };
+      } catch (err) {
+        console.error(
+          `[ai-generation] video generation failed for prompt "${scene.prompt.slice(0, 60)}…":`,
+          err,
+        );
+        return {
+          url: "",
+          mimeType: "video/mp4",
+          error: err instanceof Error ? err.message : String(err),
+        };
       }
     }),
   );

@@ -1001,11 +1001,9 @@ export async function handleGenerateScript(args: {
     addJobOutput(id, "scenePlan", plan);
     return okResult({ jobId: id, scenePlan: plan });
   } catch (error) {
-    updateJobStatus(id, "failed");
-    return errorResult(
-      "GENERATION_FAILED",
-      error instanceof Error ? error.message : String(error),
-    );
+    const errMsg = error instanceof Error ? error.message : String(error);
+    updateJobStatus(id, "failed", { error: errMsg });
+    return errorResult("GENERATION_FAILED", errMsg);
   }
 }
 
@@ -1039,11 +1037,9 @@ export async function handleGenerateImages(args: {
     addJobOutput(id, "sceneImages", results);
     return okResult({ jobId: id, images: results });
   } catch (error) {
-    updateJobStatus(id, "failed");
-    return errorResult(
-      "GENERATION_FAILED",
-      error instanceof Error ? error.message : String(error),
-    );
+    const errMsg = error instanceof Error ? error.message : String(error);
+    updateJobStatus(id, "failed", { error: errMsg });
+    return errorResult("GENERATION_FAILED", errMsg);
   }
 }
 
@@ -1076,11 +1072,9 @@ export async function handleGenerateAudio(args: {
     addJobOutput(id, "narrationAudio", result);
     return okResult({ jobId: id, audio: result });
   } catch (error) {
-    updateJobStatus(id, "failed");
-    return errorResult(
-      "GENERATION_FAILED",
-      error instanceof Error ? error.message : String(error),
-    );
+    const errMsg = error instanceof Error ? error.message : String(error);
+    updateJobStatus(id, "failed", { error: errMsg });
+    return errorResult("GENERATION_FAILED", errMsg);
   }
 }
 
@@ -1114,11 +1108,9 @@ export async function handleGenerateVideoAssets(args: {
     addJobOutput(id, "videoClips", results);
     return okResult({ jobId: id, clips: results });
   } catch (error) {
-    updateJobStatus(id, "failed");
-    return errorResult(
-      "GENERATION_FAILED",
-      error instanceof Error ? error.message : String(error),
-    );
+    const errMsg = error instanceof Error ? error.message : String(error);
+    updateJobStatus(id, "failed", { error: errMsg });
+    return errorResult("GENERATION_FAILED", errMsg);
   }
 }
 

@@ -640,11 +640,12 @@ export function createApp(
 
         updateJobStatus(id, "completed", { progress: 1 });
       } catch (error) {
-        updateJobStatus(id, "failed", {
-          error: error instanceof Error ? error.message : String(error),
-        } as Parameters<typeof updateJobStatus>[2]);
+        const errMsg = error instanceof Error ? error.message : String(error);
+        updateJobStatus(id, "failed", { error: errMsg });
       }
-    })().catch(() => {/* fire-and-forget */});
+    })().catch((err: unknown) => {
+      console.error(`[generation] job ${id} fire-and-forget failed:`, err);
+    });
 
     return c.json(job, 202);
   });

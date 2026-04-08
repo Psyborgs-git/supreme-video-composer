@@ -50,8 +50,13 @@ export async function runImagePipeline(
           imageUrl: result.urls[0] ?? "",
           usedPrompt: prompt,
         };
-      } catch {
-        // On error, return empty URL so the scene is still usable
+      } catch (err) {
+        // Log the failure so developers can diagnose provider issues, but
+        // return an empty URL so the pipeline can continue with other scenes.
+        console.error(
+          `[ai-generation] image generation failed for prompt "${prompt.slice(0, 60)}…":`,
+          err,
+        );
         return { imageUrl: "", usedPrompt: prompt };
       }
     }),

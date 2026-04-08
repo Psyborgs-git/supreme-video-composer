@@ -83,24 +83,29 @@ Return ONLY valid JSON matching this shape:
     });
 
     const raw = resp.choices[0]?.message?.content ?? "{}";
-    const parsed = JSON.parse(raw) as Partial<ScriptGenerationResult>;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
 
-    // Normalise and fill defaults
-    const scenes: GeneratedSceneData[] = (parsed.scenes ?? []).map((s, i) => ({
-      title: (s as GeneratedSceneData).title ?? `Scene ${i + 1}`,
-      body: (s as GeneratedSceneData).body ?? "",
-      imagePrompt: (s as GeneratedSceneData).imagePrompt ?? (s as GeneratedSceneData).body ?? "",
-      voiceoverText: (s as GeneratedSceneData).voiceoverText ?? (s as GeneratedSceneData).body ?? "",
-      durationFrames: (s as GeneratedSceneData).durationFrames ?? 150,
-      enterTransition: (s as GeneratedSceneData).enterTransition ?? "fade",
-      exitTransition: (s as GeneratedSceneData).exitTransition ?? "fade",
+    // Normalise and fill defaults for each scene from the LM response
+    const rawScenes = Array.isArray(parsed.scenes) ? (parsed.scenes as Record<string, unknown>[]) : [];
+    const scenes: GeneratedSceneData[] = rawScenes.map((s, i) => ({
+      title: typeof s.title === "string" ? s.title : `Scene ${i + 1}`,
+      body: typeof s.body === "string" ? s.body : "",
+      imagePrompt: typeof s.imagePrompt === "string" ? s.imagePrompt : (typeof s.body === "string" ? s.body : ""),
+      voiceoverText: typeof s.voiceoverText === "string" ? s.voiceoverText : (typeof s.body === "string" ? s.body : ""),
+      durationFrames: typeof s.durationFrames === "number" ? s.durationFrames : 150,
+      enterTransition: (["fade", "blur", "swipe", "zoom", "none"] as const).includes(s.enterTransition as never)
+        ? (s.enterTransition as GeneratedSceneData["enterTransition"])
+        : "fade",
+      exitTransition: (["fade", "blur", "swipe", "zoom", "none"] as const).includes(s.exitTransition as never)
+        ? (s.exitTransition as GeneratedSceneData["exitTransition"])
+        : "fade",
     }));
 
     return {
-      title: parsed.title ?? `Video: ${req.prompt.slice(0, 50)}`,
-      description: parsed.description ?? req.prompt,
-      narrationScript: parsed.narrationScript ?? scenes.map((s) => s.voiceoverText).join(" "),
-      backgroundMusicStyle: parsed.backgroundMusicStyle ?? "ambient",
+      title: typeof parsed.title === "string" ? parsed.title : `Video: ${req.prompt.slice(0, 50)}`,
+      description: typeof parsed.description === "string" ? parsed.description : req.prompt,
+      narrationScript: typeof parsed.narrationScript === "string" ? parsed.narrationScript : scenes.map((s) => s.voiceoverText).join(" "),
+      backgroundMusicStyle: typeof parsed.backgroundMusicStyle === "string" ? parsed.backgroundMusicStyle : "ambient",
       scenes,
     };
   }
