@@ -15,7 +15,7 @@ services:
     image: remotion-studio-studio:local
     init: true
     ports:
-      - "3000:3000"
+      - "${HOST_STUDIO_PORT:-3000}:3000"
     volumes: *data-volumes
     environment:
       - NODE_ENV=production
@@ -41,14 +41,14 @@ services:
       studio:
         condition: service_healthy
     ports:
-      - "9090:9090"
+      - "${HOST_MCP_PORT:-9090}:9090"
     volumes: *data-volumes
     environment:
       - NODE_ENV=production
       - MCP_HOST=0.0.0.0
       - MCP_PORT=9090
       - STUDIO_API_BASE_URL=http://studio:3000
-      - STUDIO_PUBLIC_URL=http://localhost:3000
+      - STUDIO_PUBLIC_URL=http://localhost:${HOST_STUDIO_PORT:-3000}
       - ASSETS_DIR=/data/assets
       - PROJECTS_DIR=/data/projects
       - EXPORTS_DIR=/data/exports

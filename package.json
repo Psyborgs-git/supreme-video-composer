@@ -29,6 +29,19 @@
   "devDependencies": {
     "typescript": "^5.5.0"
   },
+  "overrides": {
+    "remotion": "4.0.445",
+    "@remotion/bundler": "4.0.445",
+    "@remotion/cli": "4.0.445",
+    "@remotion/google-fonts": "4.0.445",
+    "@remotion/media-utils": "4.0.445",
+    "@remotion/noise": "4.0.445",
+    "@remotion/paths": "4.0.445",
+    "@remotion/player": "4.0.445",
+    "@remotion/renderer": "4.0.445",
+    "@remotion/shapes": "4.0.445",
+    "@remotion/transitions": "4.0.445"
+  },
   "packageManager": "bun@1.3.11",
   "engines": {
     "bun": ">=1.3.0"

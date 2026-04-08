@@ -20,7 +20,8 @@ type Category = (typeof CATEGORIES)[number];
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [templates, setTemplates] = useState(() => getAllTemplates());
+  const visibleTemplates = () => getAllTemplates().filter((template) => template.manifest.category !== "system");
+  const [templates, setTemplates] = useState(visibleTemplates);
   const [activeCategory, setActiveCategory] = useState<Category>("all");
   const [search, setSearch] = useState("");
 
@@ -39,7 +40,7 @@ export const Dashboard: React.FC = () => {
   // Delete confirm
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-  const refresh = () => setTemplates([...getAllTemplates()]);
+  const refresh = () => setTemplates([...visibleTemplates()]);
 
   const filtered = templates.filter((t) => {
     const matchCat = activeCategory === "all" || t.manifest.category === activeCategory;

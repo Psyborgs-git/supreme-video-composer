@@ -21,9 +21,12 @@ npm run mcp:http
 
 # Full Studio + MCP stack
 docker compose up --build studio mcp
+
+# Override published host ports when needed
+HOST_STUDIO_PORT=3001 HOST_MCP_PORT=19090 docker compose up --build studio mcp
 ```
 
-The HTTP server listens on `http://localhost:9090/mcp` and exposes `GET /health` for readiness checks.
+The HTTP server listens on `http://localhost:9090/mcp` by default and exposes `GET /health` for readiness checks. In Docker Compose, `HOST_STUDIO_PORT` and `HOST_MCP_PORT` override the published host ports without changing the container-to-container URLs.
 
 When `STUDIO_API_BASE_URL` is set, project, asset, and render tools proxy to the real Studio backend. Without it, the MCP package falls back to its local in-memory handlers for standalone usage.
 
@@ -559,7 +562,7 @@ npm install
 npm run --workspace @studio/mcp-server type-check
 ```
 
-- For HTTP mode, check `http://localhost:9090/health`
+- For HTTP mode, check `http://localhost:9090/health` or the alternate host port you published with `HOST_MCP_PORT`
 - For Docker Compose, confirm `STUDIO_API_BASE_URL=http://studio:3000`
 
 **Tool returns error**:

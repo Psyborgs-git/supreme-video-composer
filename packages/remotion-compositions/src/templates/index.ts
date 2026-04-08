@@ -21,3 +21,10 @@ export type { TikTokCaptionProps } from "./tiktok-caption";
 
 export { PromptToVideo, PromptToVideoSchema } from "./prompt-to-video";
 export type { PromptToVideoProps } from "./prompt-to-video";
+
+export {
+	DynamicVideo,
+	DynamicVideoSchema,
+	calculateDynamicVideoMetadata,
+} from "./DynamicVideo";
+export type { DynamicVideoProps } from "./DynamicVideo";

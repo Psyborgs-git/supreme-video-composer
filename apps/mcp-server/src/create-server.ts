@@ -37,6 +37,23 @@ import {
   handleValidateTemplate,
   type ToolResult,
 } from "./handlers.js";
+import {
+  buildCreateVideoDescription,
+  createVideoInputSchema,
+  handleCreateVideo,
+  handleReadMe,
+  handleRuleReactCode,
+  handleRuleRemotionAnimations,
+  handleRuleRemotionSequencing,
+  handleRuleRemotionTextAnimations,
+  handleRuleRemotionTiming,
+  handleRuleRemotionTransitions,
+  handleRuleRemotionTrimming,
+} from "./remotion-app/tools.js";
+import {
+  registerRemotionWidgetResource,
+  REMOTION_WIDGET_URI,
+} from "./remotion-widget/resource.js";
 
 const aspectRatioEnum = z.enum([
   ...CANONICAL_ASPECT_RATIO_PRESET_IDS,
@@ -48,6 +65,82 @@ export function createMcpServer(runtime: McpToolRuntime): McpServer {
     name: "media-studio",
     version: "0.3.0",
   });
+
+  registerRemotionWidgetResource(server, runtime);
+
+  // ─── Remotion MCP parity tools ────────────────────────────────────────────
+
+  server.tool(
+    "read_me",
+    "IMPORTANT: Call this first to learn the create_video contract and discover the available rule tools",
+    {},
+    () => handleReadMe(),
+  );
+
+  server.tool(
+    "rule_react_code",
+    "Project code reference: file structure, supported imports, entry-file contract, and props-first composition design",
+    {},
+    () => handleRuleReactCode(),
+  );
+
+  server.tool(
+    "rule_remotion_animations",
+    "Remotion animations: useCurrentFrame, frame-driven animation fundamentals",
+    {},
+    () => handleRuleRemotionAnimations(),
+  );
+
+  server.tool(
+    "rule_remotion_timing",
+    "Remotion timing: interpolate, spring, Easing, spring configs, delay, duration",
+    {},
+    () => handleRuleRemotionTiming(),
+  );
+
+  server.tool(
+    "rule_remotion_sequencing",
+    "Remotion sequencing: Sequence, durationInFrames, scene management, and local frame behavior",
+    {},
+    () => handleRuleRemotionSequencing(),
+  );
+
+  server.tool(
+    "rule_remotion_transitions",
+    "Remotion transitions: TransitionSeries, fade, slide, wipe, flip, and duration calculation",
+    {},
+    () => handleRuleRemotionTransitions(),
+  );
+
+  server.tool(
+    "rule_remotion_text_animations",
+    "Remotion text: typewriter effects, word highlighting, and string-slicing patterns",
+    {},
+    () => handleRuleRemotionTextAnimations(),
+  );
+
+  server.tool(
+    "rule_remotion_trimming",
+    "Remotion trimming: cut the start or end of animations with negative Sequence offsets and nested delays",
+    {},
+    () => handleRuleRemotionTrimming(),
+  );
+
+  server.registerTool(
+    "create_video",
+    {
+      title: "Create video",
+      description: buildCreateVideoDescription(),
+      inputSchema: createVideoInputSchema,
+      _meta: {
+        ui: { resourceUri: REMOTION_WIDGET_URI },
+        "openai/outputTemplate": REMOTION_WIDGET_URI,
+        "openai/toolInvocation/invoking": "Compiling project...",
+        "openai/toolInvocation/invoked": "Video ready",
+      },
+    },
+    (args, extra) => handleCreateVideo(args, extra, runtime),
+  );
 
   // ─── Template tools ────────────────────────────────────────────────────────
 

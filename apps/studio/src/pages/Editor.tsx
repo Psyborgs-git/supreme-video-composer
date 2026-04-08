@@ -10,6 +10,58 @@ import { ExportPanel } from "@/components/ExportPanel";
 import { ASPECT_RATIO_PRESETS } from "@studio/shared-types";
 import type { AspectRatioPreset } from "@studio/shared-types";
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function readPositiveNumber(value: unknown, fallback: number): number {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return value;
+  }
+
+  return fallback;
+}
+
+function readDynamicVideoMeta(inputProps: Record<string, unknown>) {
+  const rawMeta = inputProps.meta;
+  if (!isRecord(rawMeta)) {
+    return null;
+  }
+
+  return {
+    title:
+      typeof rawMeta.title === "string" && rawMeta.title.trim().length > 0
+        ? rawMeta.title
+        : "Generated Remotion Video",
+    compositionId:
+      typeof rawMeta.compositionId === "string" && rawMeta.compositionId.trim().length > 0
+        ? rawMeta.compositionId
+        : "Main",
+    width: readPositiveNumber(rawMeta.width, 1920),
+    height: readPositiveNumber(rawMeta.height, 1080),
+    fps: readPositiveNumber(rawMeta.fps, 30),
+    durationInFrames: readPositiveNumber(rawMeta.durationInFrames, 150),
+  };
+}
+
+function readDynamicVideoSourceSummary(inputProps: Record<string, unknown>) {
+  const rawSourceProject = inputProps.sourceProject;
+  if (!isRecord(rawSourceProject)) {
+    return null;
+  }
+
+  const files = isRecord(rawSourceProject.files) ? rawSourceProject.files : null;
+  return {
+    entryFile:
+      typeof rawSourceProject.entryFile === "string" ? rawSourceProject.entryFile : null,
+    fileCount: files ? Object.keys(files).length : null,
+    compileError:
+      typeof inputProps.compileError === "string" && inputProps.compileError.trim().length > 0
+        ? inputProps.compileError
+        : null,
+  };
+}
+
 export const Editor: React.FC = () => {
   const { templateId, projectId } = useParams<{ templateId: string; projectId?: string }>();
   const navigate = useNavigate();
@@ -31,6 +83,12 @@ export const Editor: React.FC = () => {
   const template = useMemo(
     () => (templateId ? getTemplate(templateId) : undefined),
     [templateId],
+  );
+  const isDynamicVideo = template?.manifest.id === "dynamic-video";
+  const dynamicMeta = useMemo(() => readDynamicVideoMeta(inputProps), [inputProps]);
+  const dynamicSourceSummary = useMemo(
+    () => readDynamicVideoSourceSummary(inputProps),
+    [inputProps],
   );
 
   useEffect(() => {
@@ -68,15 +126,20 @@ export const Editor: React.FC = () => {
     );
   }
 
-  const { width, height } = aspectRatio;
+  const previewWidth = dynamicMeta?.width ?? aspectRatio.width;
+  const previewHeight = dynamicMeta?.height ?? aspectRatio.height;
+  const previewFps = dynamicMeta?.fps ?? template.manifest.defaultFps;
+  const previewDuration = dynamicMeta?.durationInFrames ?? template.manifest.defaultDurationInFrames;
   const aspectRatioLabel =
-    ASPECT_RATIO_PRESETS[aspectRatio.preset as keyof typeof ASPECT_RATIO_PRESETS]?.label ??
-    aspectRatio.preset;
+    isDynamicVideo
+      ? "Generated project"
+      : ASPECT_RATIO_PRESETS[aspectRatio.preset as keyof typeof ASPECT_RATIO_PRESETS]?.label ??
+        aspectRatio.preset;
 
   const maxPlayerWidth = 800;
-  const playerScale = Math.min(1, maxPlayerWidth / width);
-  const playerWidth = width * playerScale;
-  const playerHeight = height * playerScale;
+  const playerScale = Math.min(1, maxPlayerWidth / previewWidth);
+  const playerWidth = previewWidth * playerScale;
+  const playerHeight = previewHeight * playerScale;
 
   const sidebarContent = (
     <div className="flex flex-col h-full">
@@ -112,25 +175,84 @@ export const Editor: React.FC = () => {
       <div className="flex-1 overflow-y-auto">
         {activeTab === "properties" && (
           <>
-            {/* Aspect Ratio */}
-            <div className="p-4 border-b border-gray-200 dark:border-zinc-800">
-              <h3 className="text-sm font-medium text-gray-700 dark:text-zinc-300 mb-3">Aspect Ratio</h3>
-              <AspectRatioSelector
-                value={aspectRatio.preset}
-                supported={template.manifest.supportedAspectRatios as AspectRatioPreset[]}
-                onChange={(preset) => setAspectRatio(preset)}
-              />
-            </div>
+            {isDynamicVideo ? (
+              <div className="p-4 space-y-4">
+                <div className="rounded-xl border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-950/60 p-4 space-y-3">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 dark:text-zinc-300">Generated video</h3>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-zinc-400">
+                      This project was created via MCP. To change the code or slot props, call
+                      <code className="mx-1 rounded bg-gray-200 dark:bg-zinc-800 px-1.5 py-0.5 text-xs">create_video</code>
+                      again and the same saved project will update automatically.
+                    </p>
+                  </div>
 
-            {/* Props Form */}
-            <div className="p-4">
-              <h3 className="text-sm font-medium text-gray-700 dark:text-zinc-300 mb-3">Properties</h3>
-              <PropsForm
-                schema={template.manifest.propsSchema}
-                values={inputProps}
-                onChange={updateInputProp}
-              />
-            </div>
+                  <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                    <div>
+                      <dt className="text-gray-500 dark:text-zinc-500">Composition</dt>
+                      <dd className="mt-1 font-medium text-gray-900 dark:text-zinc-100">{dynamicMeta?.compositionId ?? "Main"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-gray-500 dark:text-zinc-500">Output</dt>
+                      <dd className="mt-1 font-medium text-gray-900 dark:text-zinc-100">
+                        {previewWidth} × {previewHeight}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-gray-500 dark:text-zinc-500">Timing</dt>
+                      <dd className="mt-1 font-medium text-gray-900 dark:text-zinc-100">
+                        {previewDuration} frames · {previewFps}fps
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-gray-500 dark:text-zinc-500">Source files</dt>
+                      <dd className="mt-1 font-medium text-gray-900 dark:text-zinc-100">
+                        {dynamicSourceSummary?.fileCount ?? 0}
+                      </dd>
+                    </div>
+                    {dynamicSourceSummary?.entryFile && (
+                      <div className="sm:col-span-2">
+                        <dt className="text-gray-500 dark:text-zinc-500">Entry file</dt>
+                        <dd className="mt-1 break-all font-mono text-xs text-gray-900 dark:text-zinc-100">
+                          {dynamicSourceSummary.entryFile}
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+                </div>
+
+                {dynamicSourceSummary?.compileError && (
+                  <div className="rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/40 p-4 text-sm text-red-700 dark:text-red-300">
+                    <div className="font-semibold">Compilation error</div>
+                    <pre className="mt-2 whitespace-pre-wrap break-words font-mono text-xs">
+                      {dynamicSourceSummary.compileError}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                {/* Aspect Ratio */}
+                <div className="p-4 border-b border-gray-200 dark:border-zinc-800">
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-zinc-300 mb-3">Aspect Ratio</h3>
+                  <AspectRatioSelector
+                    value={aspectRatio.preset}
+                    supported={template.manifest.supportedAspectRatios as AspectRatioPreset[]}
+                    onChange={(preset) => setAspectRatio(preset)}
+                  />
+                </div>
+
+                {/* Props Form */}
+                <div className="p-4">
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-zinc-300 mb-3">Properties</h3>
+                  <PropsForm
+                    schema={template.manifest.propsSchema}
+                    values={inputProps}
+                    onChange={updateInputProp}
+                  />
+                </div>
+              </>
+            )}
           </>
         )}
 
@@ -148,16 +270,16 @@ export const Editor: React.FC = () => {
         {/* Left: Preview */}
         <div className="flex-1 flex flex-col items-center justify-center bg-gray-50 dark:bg-zinc-950 p-6 overflow-auto transition-colors">
           <div className="mb-4 text-sm text-gray-400 dark:text-zinc-500">
-            {width} × {height} · {aspectRatioLabel}
+            {previewWidth} × {previewHeight} · {aspectRatioLabel}
           </div>
 
           <Player
             ref={playerRef}
             component={template.component}
-            durationInFrames={template.manifest.defaultDurationInFrames}
-            fps={template.manifest.defaultFps}
-            compositionWidth={width}
-            compositionHeight={height}
+            durationInFrames={previewDuration}
+            fps={previewFps}
+            compositionWidth={previewWidth}
+            compositionHeight={previewHeight}
             inputProps={inputProps}
             controls
             loop
@@ -183,22 +305,22 @@ export const Editor: React.FC = () => {
         {/* Preview area */}
         <div className="flex-1 flex flex-col items-center justify-center bg-gray-50 dark:bg-zinc-950 p-4 min-h-0 transition-colors">
           <div className="mb-2 text-xs text-gray-400 dark:text-zinc-500">
-            {width} × {height} · {aspectRatioLabel}
+            {previewWidth} × {previewHeight} · {aspectRatioLabel}
           </div>
 
           {(() => {
-            const maxW = Math.min(width, 600);
-            const scale = maxW / width;
-            const pw = width * scale;
-            const ph = height * scale;
+            const maxW = Math.min(previewWidth, 600);
+            const scale = maxW / previewWidth;
+            const pw = previewWidth * scale;
+            const ph = previewHeight * scale;
             return (
               <Player
                 ref={playerRef}
                 component={template.component}
-                durationInFrames={template.manifest.defaultDurationInFrames}
-                fps={template.manifest.defaultFps}
-                compositionWidth={width}
-                compositionHeight={height}
+                durationInFrames={previewDuration}
+                fps={previewFps}
+                compositionWidth={previewWidth}
+                compositionHeight={previewHeight}
                 inputProps={inputProps}
                 controls
                 loop

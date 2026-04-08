@@ -79,9 +79,9 @@ export async function executeRender(
     browserExecutable,
   });
 
-  // Override dimensions from aspect ratio
-  const overrideWidth = job.aspectRatio.width;
-  const overrideHeight = job.aspectRatio.height;
+  const useCompositionDimensions = job.templateId === "DynamicVideo";
+  const overrideWidth = useCompositionDimensions ? composition.width : job.aspectRatio.width;
+  const overrideHeight = useCompositionDimensions ? composition.height : job.aspectRatio.height;
 
   const codec = CODEC_MAP[job.exportFormat.codec] as any;
 
@@ -103,11 +103,13 @@ export async function executeRender(
   try {
     await renderMedia({
       serveUrl,
-      composition: {
-        ...composition,
-        width: overrideWidth,
-        height: overrideHeight,
-      },
+      composition: useCompositionDimensions
+        ? composition
+        : {
+            ...composition,
+            width: overrideWidth,
+            height: overrideHeight,
+          },
       browserExecutable,
       codec,
       outputLocation: outputFile,

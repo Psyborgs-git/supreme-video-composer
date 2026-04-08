@@ -9,6 +9,7 @@
  */
 
 import fs from "node:fs";
+import path from "node:path";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import {
@@ -83,7 +84,7 @@ export function createApp(
   // ─── Templates ────────────────────────────────────────────────────────────
 
   app.get("/api/templates", (c) => {
-    const manifests = getTemplateManifests().map((m) => ({
+    const manifests = getTemplateManifests().filter((m) => m.category !== "system").map((m) => ({
       id: m.id,
       name: m.name,
       description: m.description,
@@ -517,6 +518,30 @@ export function createApp(
     return c.json(job);
   });
 
+  app.get("/api/renders/:jobId/download", (c) => {
+    const jobId = c.req.param("jobId");
+    const job = renderQueue.getJob(jobId) ?? renderJobStore.get(jobId);
+    if (!job) return c.json({ error: "Render job not found" }, 404);
+    if (job.status !== "complete" || !job.outputPath) {
+      return c.json({ error: "Render output is not ready yet" }, 409);
+    }
+    if (!fs.existsSync(job.outputPath)) {
+      return c.json({ error: "Rendered file not found on disk" }, 404);
+    }
+
+    const fileName = path.basename(job.outputPath);
+    const contentType = inferRenderMimeType(fileName);
+
+    return new Response(fs.readFileSync(job.outputPath), {
+      status: 200,
+      headers: {
+        "Content-Type": contentType,
+        "Content-Disposition": `attachment; filename="${fileName}"`,
+        "Cache-Control": "no-store",
+      },
+    });
+  });
+
   app.post("/api/renders/:jobId/cancel", (c) => {
     const jobId = c.req.param("jobId");
     const job = renderQueue.getJob(jobId) ?? renderJobStore.get(jobId);
@@ -526,4 +551,19 @@ export function createApp(
   });
 
   return { app, projectStore, renderJobStore, assetStore };
+}
+
+function inferRenderMimeType(fileName: string): string {
+  const ext = path.extname(fileName).toLowerCase();
+  switch (ext) {
+    case ".webm":
+      return "video/webm";
+    case ".mov":
+      return "video/quicktime";
+    case ".gif":
+      return "image/gif";
+    case ".mp4":
+    default:
+      return "video/mp4";
+  }
 }

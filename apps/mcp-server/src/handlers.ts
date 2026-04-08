@@ -19,6 +19,8 @@ import {
   QUALITY_CRF,
   AssetTypeSchema,
 } from "@studio/shared-types";
+import { clearSessionProjects } from "./remotion-app/utils.js";
+import { clearCreateVideoProjectSessions } from "./remotion-app/tools.js";
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -38,6 +40,8 @@ export function clearStores() {
   projectStore.clear();
   renderJobStore.clear();
   assetStore.clear();
+  clearSessionProjects();
+  clearCreateVideoProjectSessions();
 }
 
 /** Pseudo-UUID generator (no external dependency) */
@@ -73,7 +77,7 @@ function okResult(data: unknown): ToolResult {
 // ─── Tool handlers ───────────────────────────────────────────────
 
 export async function handleListTemplates(): Promise<ToolResult> {
-  const manifests = getTemplateManifests();
+  const manifests = getTemplateManifests().filter((manifest) => manifest.category !== "system");
   return okResult(
     manifests.map((m) => ({
       id: m.id,

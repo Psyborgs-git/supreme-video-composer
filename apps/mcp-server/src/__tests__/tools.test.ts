@@ -24,6 +24,17 @@ import {
   renderJobStore,
   assetStore,
 } from "../handlers";
+import {
+  handleCreateVideo,
+  handleReadMe,
+  handleRuleReactCode,
+  handleRuleRemotionAnimations,
+  handleRuleRemotionSequencing,
+  handleRuleRemotionTextAnimations,
+  handleRuleRemotionTiming,
+  handleRuleRemotionTransitions,
+  handleRuleRemotionTrimming,
+} from "../remotion-app/tools";
 
 // Clear stores between tests to prevent state leakage
 beforeEach(() => clearStores());
@@ -32,6 +43,15 @@ beforeEach(() => clearStores());
 
 function parseText(result: { content: { type: string; text: string }[] }) {
   return JSON.parse(result.content[0].text);
+}
+
+function parseVideoProject(result: { structuredContent?: Record<string, unknown> }) {
+  const videoProject = result.structuredContent?.videoProject;
+  if (typeof videoProject !== "string") {
+    throw new Error(`Expected structuredContent.videoProject string, received ${JSON.stringify(result.structuredContent)}`);
+  }
+
+  return JSON.parse(videoProject);
 }
 
 // ─── list_templates ───────────────────────────────────────────────
@@ -1071,5 +1091,229 @@ describe("MCP: validate_template", () => {
   it("returns error for unknown template", async () => {
     const result = await handleValidateTemplate({ templateId: "no-such-template" });
     expect(result.isError).toBe(true);
+  });
+});
+
+// ─── Remotion MCP parity rule tools ───────────────────────────────────────
+
+describe("MCP: Remotion rule tools", () => {
+  it("read_me describes create_video and the rule tools", async () => {
+    const result = await handleReadMe();
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0].text).toContain("create_video");
+    expect(result.content[0].text).toContain("rule_react_code");
+  });
+
+  it("rule tools return focused Remotion guidance", async () => {
+    const results = await Promise.all([
+      handleRuleReactCode(),
+      handleRuleRemotionAnimations(),
+      handleRuleRemotionTiming(),
+      handleRuleRemotionSequencing(),
+      handleRuleRemotionTransitions(),
+      handleRuleRemotionTextAnimations(),
+      handleRuleRemotionTrimming(),
+    ]);
+
+    const combined = results.map((result) => result.content[0].text).join("\n\n");
+    expect(combined).toContain("useCurrentFrame");
+    expect(combined).toContain("TransitionSeries");
+    expect(combined).toContain("durationInFrames");
+  });
+});
+
+// ─── create_video ─────────────────────────────────────────────────────────
+
+describe("MCP: create_video", () => {
+  it("creates a compiled project with structuredContent", async () => {
+    const result = await handleCreateVideo({
+      files: JSON.stringify({
+        "/src/Video.tsx": `import {AbsoluteFill} from "remotion";\nexport default function Video(){return <AbsoluteFill style={{backgroundColor:"black"}} />;}`,
+      }),
+      title: "Hello Video",
+    });
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0].text).toContain('Created video project "Hello Video".');
+
+    const project = parseVideoProject(result);
+    expect(project.meta.title).toBe("Hello Video");
+    expect(project.meta.compositionId).toBe("Main");
+    expect(project.bundle).toContain("__REMOTION_MCP_BUNDLE");
+    expect(project.compileError).toBeUndefined();
+  });
+
+  it("merges changed files with the previous session project", async () => {
+    const sessionId = "session-merge-test";
+
+    const initial = await handleCreateVideo(
+      {
+        files: JSON.stringify({
+          "/src/Video.tsx": `import {AbsoluteFill} from "remotion";\nimport {Title} from "./components/Title";\nexport default function Video(){return <AbsoluteFill><Title /></AbsoluteFill>;}`,
+          "/src/components/Title.tsx": `export function Title(){return <div>Original</div>;}`,
+        }),
+      },
+      { sessionId },
+    );
+    expect(initial.isError).toBeUndefined();
+
+    const update = await handleCreateVideo(
+      {
+        files: JSON.stringify({
+          "/src/components/Title.tsx": `export function Title(){return <div>Updated</div>;}`,
+        }),
+      },
+      { sessionId },
+    );
+
+    expect(update.isError).toBeUndefined();
+    expect(update.content[0].text).toContain("Merged with previous project.");
+
+    const project = parseVideoProject(update);
+    expect(project.compileError).toBeUndefined();
+  });
+
+  it("merges slot props across calls", async () => {
+    const sessionId = "session-props-test";
+
+    await handleCreateVideo(
+      {
+        files: JSON.stringify({
+          "/src/Video.tsx": `import {AbsoluteFill} from "remotion";\nexport default function Video(props){return <AbsoluteFill>{props.title} {props.subtitle}</AbsoluteFill>;}`,
+        }),
+        defaultProps: { title: "Hello" },
+      },
+      { sessionId },
+    );
+
+    const result = await handleCreateVideo(
+      {
+        files: JSON.stringify({
+          "/src/Video.tsx": `import {AbsoluteFill} from "remotion";\nexport default function Video(props){return <AbsoluteFill>{props.title} {props.subtitle}</AbsoluteFill>;}`,
+        }),
+        inputProps: { subtitle: "World" },
+      },
+      { sessionId },
+    );
+
+    expect(result.isError).toBeUndefined();
+    const project = parseVideoProject(result);
+    expect(project.defaultProps.title).toBe("Hello");
+    expect(project.inputProps.subtitle).toBe("World");
+  });
+
+  it("returns a structured error for invalid files JSON", async () => {
+    const result = await handleCreateVideo({ files: "not-json" });
+    expect(result.isError).toBe(true);
+    const err = parseText(result);
+    expect(err.error.code).toBe("INVALID_FILES_JSON");
+  });
+
+  it("persists generated videos into Studio projects when the runtime has a Studio API", async () => {
+    const savedProjects = new Map<string, Record<string, unknown>>();
+    let projectCounter = 0;
+
+    const runtime = {
+      previewBaseUrl: "http://localhost:3000",
+      studioApi: {
+        async createProject(input: Record<string, unknown>) {
+          const projectId = `project-${++projectCounter}`;
+          const project = {
+            id: projectId,
+            name: input.name,
+            templateId: input.templateId,
+            inputProps: input.inputProps,
+            aspectRatio: { preset: input.aspectRatio, width: 1920, height: 1080 },
+            exportFormat: {
+              codec: "h264",
+              fileExtension: ".mp4",
+              crf: 18,
+              fps: 30,
+              scale: 1,
+            },
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            version: 1,
+          };
+          savedProjects.set(projectId, project);
+          return project;
+        },
+        async updateProject(projectId: string, input: Record<string, unknown>) {
+          const existing = savedProjects.get(projectId);
+          if (!existing) {
+            const error = new Error("Project not found") as Error & { status: number };
+            error.status = 404;
+            throw error;
+          }
+
+          const updated = {
+            ...existing,
+            name: input.name ?? existing.name,
+            inputProps: input.inputProps ?? existing.inputProps,
+            updatedAt: new Date().toISOString(),
+            version: ((existing.version as number | undefined) ?? 1) + 1,
+          };
+          savedProjects.set(projectId, updated);
+          return updated;
+        },
+      },
+    } as any;
+
+    const sessionId = "create-video-persist-test";
+    const firstResult = await handleCreateVideo(
+      {
+        files: JSON.stringify({
+          "/src/Video.tsx": `import {AbsoluteFill} from "remotion";\nexport default function Video(props){return <AbsoluteFill>{props.title}</AbsoluteFill>;}`,
+        }),
+        title: "Persisted Video",
+        defaultProps: { title: "Hello" },
+      },
+      { sessionId },
+      runtime,
+    );
+
+    expect(firstResult.isError).toBeUndefined();
+    expect(firstResult.content[0].text).toContain("Saved Studio project");
+    expect(firstResult.structuredContent?.projectId).toBe("project-1");
+    expect(firstResult.structuredContent?.previewUrl).toBe(
+      "http://localhost:3000/editor/dynamic-video/project-1",
+    );
+
+    const firstProject = parseVideoProject(firstResult);
+    expect(firstProject.sourceProject.entryFile).toBe("/src/Video.tsx");
+    expect(
+      (savedProjects.get("project-1")?.inputProps as Record<string, any>).meta.title,
+    ).toBe("Persisted Video");
+
+    const secondResult = await handleCreateVideo(
+      {
+        files: JSON.stringify({
+          "/src/Video.tsx": `import {AbsoluteFill} from "remotion";\nexport default function Video(props){return <AbsoluteFill>{props.title} again</AbsoluteFill>;}`,
+        }),
+      },
+      { sessionId },
+      runtime,
+    );
+
+    expect(secondResult.isError).toBeUndefined();
+    expect(secondResult.structuredContent?.projectId).toBe("project-1");
+    expect(secondResult.content[0].text).toContain("Saved Studio project");
+    expect((savedProjects.get("project-1")?.version as number | undefined) ?? 0).toBe(2);
+
+    const branchedResult = await handleCreateVideo(
+      {
+        files: JSON.stringify({
+          "/src/Video.tsx": `import {AbsoluteFill} from "remotion";\nexport default function Video(props){return <AbsoluteFill>{props.title} branch</AbsoluteFill>;}`,
+        }),
+        inputProps: { title: "Variant" },
+        persistAsNew: true,
+      },
+      { sessionId },
+      runtime,
+    );
+
+    expect(branchedResult.isError).toBeUndefined();
+    expect(branchedResult.structuredContent?.projectId).toBe("project-2");
+    expect(savedProjects.size).toBe(2);
   });
 });

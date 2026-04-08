@@ -16,6 +16,9 @@ import {
   TikTokCaptionSchema,
   PromptToVideo,
   PromptToVideoSchema,
+  DynamicVideo,
+  DynamicVideoSchema,
+  calculateDynamicVideoMetadata,
 } from "./templates";
 
 export const RemotionRoot: React.FC = () => {
@@ -100,6 +103,17 @@ export const RemotionRoot: React.FC = () => {
         height={1920}
         defaultProps={PromptToVideoSchema.parse({})}
         schema={PromptToVideoSchema}
+      />
+      <Composition
+        id="DynamicVideo"
+        component={DynamicVideo}
+        durationInFrames={150}
+        fps={30}
+        width={1920}
+        height={1080}
+        defaultProps={DynamicVideoSchema.parse({})}
+        schema={DynamicVideoSchema}
+        calculateMetadata={calculateDynamicVideoMetadata}
       />
     </>
   );

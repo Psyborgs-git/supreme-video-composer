@@ -6,13 +6,12 @@ import {
   validateInputProps,
 } from "../index";
 
-// The registry is populated as a side-effect of importing from "@studio/template-registry"
-// (the templates.ts file registers all 6 templates)
+// The registry is populated as a side-effect of importing from "@studio/template-registry".
 
 describe("Template Registry — template count", () => {
-  it("has exactly 8 registered templates", () => {
+  it("has exactly 9 registered templates", () => {
     const templates = getAllTemplates();
-    expect(templates).toHaveLength(8);
+    expect(templates).toHaveLength(9);
   });
 
   it("contains all expected template IDs", () => {
@@ -25,6 +24,7 @@ describe("Template Registry — template count", () => {
     expect(ids).toContain("babylens");
     expect(ids).toContain("tiktok-caption");
     expect(ids).toContain("prompt-to-video");
+    expect(ids).toContain("dynamic-video");
   });
 });
 

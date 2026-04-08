@@ -76,12 +76,13 @@ vercel deploy apps/studio
 
 ### Option 2: Docker Compose (Studio + HTTP MCP)
 
-The repository ships a single production image that can run either the Studio app or the MCP server. `docker-compose.yml` starts both services from that image:
+The repository ships a single Dockerfile with target-specific runtime images for the Studio app and the MCP server. `docker-compose.yml` builds and runs both services together:
 
 - `studio` serves the UI and REST API on `http://localhost:3000`
 - `mcp` serves Streamable HTTP MCP on `http://localhost:9090/mcp`
 - `mcp` health checks `http://localhost:9090/health`
 - `mcp` talks to the Studio backend through `STUDIO_API_BASE_URL=http://studio:3000`
+- `HOST_STUDIO_PORT` and `HOST_MCP_PORT` can override the published host ports when `3000` or `9090` are already in use
 
 **Build and Run**:
 ```bash
@@ -89,14 +90,20 @@ docker compose up --build -d
 docker compose ps
 ```
 
+Override the published host ports when needed:
+
+```bash
+HOST_STUDIO_PORT=3001 HOST_MCP_PORT=19090 docker compose up --build -d
+```
+
 Access:
-- Web UI + API: `http://localhost:3000`
-- MCP health: `http://localhost:9090/health`
-- MCP endpoint: `http://localhost:9090/mcp`
+- Web UI + API: `http://localhost:${HOST_STUDIO_PORT:-3000}`
+- MCP health: `http://localhost:${HOST_MCP_PORT:-9090}/health`
+- MCP endpoint: `http://localhost:${HOST_MCP_PORT:-9090}/mcp`
 
 **Manual HTTP MCP container**:
 ```bash
-docker build -t remotion-studio:latest .
+docker build --target mcp-runner -t remotion-studio-mcp:local .
 docker run --rm \
   -p 9090:9090 \
   -e NODE_ENV=production \
@@ -104,8 +111,7 @@ docker run --rm \
   -e MCP_PORT=9090 \
   -e STUDIO_API_BASE_URL=http://host.docker.internal:3000 \
   -e STUDIO_PUBLIC_URL=http://host.docker.internal:3000 \
-  remotion-studio:latest \
-  bun apps/mcp-server/src/index.ts --transport=http
+  remotion-studio-mcp:local
 ```
 
 ---

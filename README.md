@@ -245,9 +245,12 @@ npm run mcp:http
 
 # Full Studio + MCP stack in Docker Compose
 docker compose up --build studio mcp
+
+# Override published host ports when 3000/9090 are already in use
+HOST_STUDIO_PORT=3001 HOST_MCP_PORT=19090 docker compose up --build studio mcp
 ```
 
-The HTTP endpoint is `http://localhost:9090/mcp`, and `http://localhost:9090/health` is available for readiness checks. In Docker Compose, the MCP service talks to the Studio backend over the internal network so project, asset, and render tools use the same persisted app state as the web UI.
+The HTTP endpoint defaults to `http://localhost:9090/mcp`, and `http://localhost:9090/health` is available for readiness checks. In Docker Compose, `HOST_STUDIO_PORT` and `HOST_MCP_PORT` can override the published host ports while the MCP service still talks to the Studio backend over the internal network so project, asset, and render tools use the same persisted app state as the web UI.
 
 Tools available include:
 - `list_templates` — Get all template info

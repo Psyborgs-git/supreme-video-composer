@@ -78,6 +78,54 @@ describe("MCP server transports", () => {
     expect(renderStatus.id).toBe(job.id);
     expect(renderStatus.status).toBe("queued");
   });
+
+  it("preserves session state for create_video over Streamable HTTP", async () => {
+    const mcp = await startHttpMcpServer(
+      {
+        previewBaseUrl: "http://localhost:3000",
+      },
+      { host: "127.0.0.1", port: 0 },
+    );
+    cleanupStack.push(mcp);
+
+    const client = new Client({ name: "mcp-http-create-video-test", version: "1.0.0" });
+    const transport = new StreamableHTTPClientTransport(new URL(`${mcp.url}/mcp`));
+    cleanupStack.push({
+      close: async () => {
+        await client.close();
+      },
+    });
+
+    await client.connect(transport);
+
+    const firstResult = await client.callTool({
+      name: "create_video",
+      arguments: {
+        files: JSON.stringify({
+          "/src/Video.tsx": `import {AbsoluteFill} from "remotion";\nimport {Title} from "./components/Title";\nexport default function Video(){return <AbsoluteFill><Title /></AbsoluteFill>;}`,
+          "/src/components/Title.tsx": `export function Title(){return <div>Original</div>;}`,
+        }),
+      },
+    });
+
+    const firstProject = parseStructuredVideoProject(firstResult);
+    expect(firstProject.compileError).toBeUndefined();
+
+    const secondResult = await client.callTool({
+      name: "create_video",
+      arguments: {
+        files: JSON.stringify({
+          "/src/components/Title.tsx": `export function Title(){return <div>Updated</div>;}`,
+        }),
+      },
+    });
+
+    const secondProject = parseStructuredVideoProject(secondResult);
+    const summary = extractToolText(secondResult);
+
+    expect(summary).toContain("Merged with previous project.");
+    expect(secondProject.compileError).toBeUndefined();
+  });
 });
 
 async function startFakeStudioBackend(): Promise<{ baseUrl: string; close: () => Promise<void> }> {
@@ -236,10 +284,23 @@ function writeJson(res: ServerResponse, status: number, payload: unknown): void 
 }
 
 function parseToolJson(result: any) {
-  const text = result.content?.find((entry: { type?: string }) => entry.type === "text")?.text;
+  const text = extractToolText(result);
   if (!text) {
     throw new Error(`Expected text content in tool result: ${JSON.stringify(result)}`);
   }
 
   return JSON.parse(text);
+}
+
+function extractToolText(result: any) {
+  return result.content?.find((entry: { type?: string }) => entry.type === "text")?.text;
+}
+
+function parseStructuredVideoProject(result: any) {
+  const videoProject = result.structuredContent?.videoProject;
+  if (typeof videoProject !== "string") {
+    throw new Error(`Expected structuredContent.videoProject string, received ${JSON.stringify(result)}`);
+  }
+
+  return JSON.parse(videoProject);
 }

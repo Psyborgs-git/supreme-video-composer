@@ -17,6 +17,9 @@ import {
   TikTokCaptionSchema,
   PromptToVideo,
   PromptToVideoSchema,
+  DynamicVideo,
+  DynamicVideoSchema,
+  calculateDynamicVideoMetadata,
 } from "@studio/remotion-compositions/templates";
 import type {
   HistoryStorylineProps,
@@ -27,6 +30,7 @@ import type {
   BabyLensProps,
   TikTokCaptionProps,
   PromptToVideoProps,
+  DynamicVideoProps,
 } from "@studio/remotion-compositions/templates";
 import { getAudioDurationInSeconds } from "@remotion/media-utils";
 
@@ -279,4 +283,30 @@ registerTemplate({
   },
   component: PromptToVideo,
   calculateMetadata: promptToVideoCalculateMetadata,
+});
+
+// ─── Dynamic Video (internal MCP-generated projects) ───────────────────────
+
+const dynamicVideoDefaults = DynamicVideoSchema.parse({});
+
+const dynamicVideoCalculateMetadata = calculateDynamicVideoMetadata as CalculateMetadataFunction<DynamicVideoProps>;
+
+registerTemplate({
+  manifest: {
+    id: "dynamic-video",
+    name: "Generated Remotion Video",
+    description:
+      "Internal template used for MCP-generated Remotion projects with persisted source and export support.",
+    category: "system",
+    tags: ["internal", "generated", "mcp"],
+    defaultDurationInFrames: 150,
+    defaultFps: 30,
+    supportedAspectRatios: ["youtube", "instagram-reel", "instagram-post", "tiktok"],
+    propsSchema: DynamicVideoSchema,
+    defaultProps: dynamicVideoDefaults as unknown as Record<string, unknown>,
+    thumbnailFrame: 0,
+    compositionId: "DynamicVideo",
+  },
+  component: DynamicVideo,
+  calculateMetadata: dynamicVideoCalculateMetadata,
 });
