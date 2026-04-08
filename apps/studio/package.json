@@ -19,6 +19,7 @@
     "@studio/renderer": "*",
     "@studio/shared-types": "*",
     "@studio/template-registry": "*",
+    "@studio/ai-generation": "*",
     "hono": "^4.6.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

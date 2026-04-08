@@ -1317,3 +1317,361 @@ describe("MCP: create_video", () => {
     expect(savedProjects.size).toBe(2);
   });
 });
+
+// ─── AI Generation MCP tool handlers ──────────────────────────────────────────
+
+import {
+  handleGenerateScript,
+  handleGenerateImages,
+  handleGenerateAudio,
+  handleGenerateVideoAssets,
+  handleGenerateProjectFromPrompt,
+  handleGetGenerationStatus,
+  handleListGenerationJobs,
+  handleApproveGeneratedAssets,
+  handleRegenerateSceneAsset,
+} from "../handlers";
+
+// ─── rule_ai_generation_overview ──────────────────────────────────────────────
+
+describe("MCP: rule_ai_generation_overview", () => {
+  it("returns overview text with tool names", async () => {
+    const { RULE_AI_GENERATION_OVERVIEW } = await import("../ai-rules.js");
+    expect(RULE_AI_GENERATION_OVERVIEW).toContain("generate_script");
+    expect(RULE_AI_GENERATION_OVERVIEW).toContain("generate_images");
+    expect(RULE_AI_GENERATION_OVERVIEW).toContain("generate_audio");
+    expect(RULE_AI_GENERATION_OVERVIEW).toContain("generate_project_from_prompt");
+    expect(RULE_AI_GENERATION_OVERVIEW).toContain("get_generation_status");
+  });
+});
+
+describe("MCP: rule_ai_asset_constraints", () => {
+  it("covers image, audio, and video constraints", async () => {
+    const { RULE_AI_ASSET_CONSTRAINTS } = await import("../ai-rules.js");
+    expect(RULE_AI_ASSET_CONSTRAINTS).toContain("Image");
+    expect(RULE_AI_ASSET_CONSTRAINTS).toContain("Audio");
+    expect(RULE_AI_ASSET_CONSTRAINTS).toContain("Video");
+  });
+});
+
+describe("MCP: rule_ai_prompting", () => {
+  it("includes prompting guidance for all modalities", async () => {
+    const { RULE_AI_PROMPTING } = await import("../ai-rules.js");
+    expect(RULE_AI_PROMPTING).toContain("Script");
+    expect(RULE_AI_PROMPTING).toContain("Image");
+    expect(RULE_AI_PROMPTING).toContain("Audio");
+  });
+});
+
+describe("MCP: rule_ai_project_assembly", () => {
+  it("covers template slot filling and Mode A/B", async () => {
+    const { RULE_AI_PROJECT_ASSEMBLY } = await import("../ai-rules.js");
+    expect(RULE_AI_PROJECT_ASSEMBLY).toContain("Mode A");
+    expect(RULE_AI_PROJECT_ASSEMBLY).toContain("Mode B");
+    expect(RULE_AI_PROJECT_ASSEMBLY).toContain("prompt-to-video");
+  });
+});
+
+describe("MCP: rule_ai_safety", () => {
+  it("covers safety status and error handling", async () => {
+    const { RULE_AI_SAFETY } = await import("../ai-rules.js");
+    expect(RULE_AI_SAFETY).toContain("safetyStatus");
+    expect(RULE_AI_SAFETY).toContain("failed");
+    expect(RULE_AI_SAFETY).toContain("OPENAI_API_KEY");
+  });
+});
+
+// ─── generate_script ──────────────────────────────────────────────────────────
+
+describe("MCP: generate_script", () => {
+  it("generates a scene plan with the requested scene count", async () => {
+    const result = await handleGenerateScript({
+      prompt: "A documentary about space exploration",
+      sceneCount: 4,
+    });
+    expect(result.isError).toBeUndefined();
+    const data = parseText(result);
+    expect(data.jobId).toBeTruthy();
+    expect(data.scenePlan.scenes).toHaveLength(4);
+    expect(data.scenePlan.title).toBeTruthy();
+    for (const s of data.scenePlan.scenes) {
+      expect(s.title).toBeTruthy();
+      expect(s.body).toBeTruthy();
+      expect(typeof s.durationFrames).toBe("number");
+    }
+  });
+
+  it("rejects empty prompt", async () => {
+    const result = await handleGenerateScript({ prompt: "" });
+    expect(result.isError).toBe(true);
+    const err = parseText(result);
+    expect(err.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("propagates style to scene transitions", async () => {
+    const result = await handleGenerateScript({ prompt: "Quick highlights", sceneCount: 2, style: "fast" });
+    expect(result.isError).toBeUndefined();
+    const data = parseText(result);
+    for (const s of data.scenePlan.scenes) {
+      expect(s.enterTransition).toBe("swipe");
+    }
+  });
+});
+
+// ─── generate_images ──────────────────────────────────────────────────────────
+
+describe("MCP: generate_images", () => {
+  it("returns one image result per scene", async () => {
+    const result = await handleGenerateImages({
+      scenes: [
+        { body: "A mountain sunset", imagePrompt: "Epic mountain sunset, photorealistic" },
+        { body: "An ocean wave" },
+      ],
+    });
+    expect(result.isError).toBeUndefined();
+    const data = parseText(result);
+    expect(data.images).toHaveLength(2);
+    for (const img of data.images) {
+      expect(img.imageUrl).toBeTruthy();
+      expect(img.usedPrompt).toBeTruthy();
+    }
+  });
+
+  it("rejects empty scenes array", async () => {
+    const result = await handleGenerateImages({ scenes: [] });
+    expect(result.isError).toBe(true);
+  });
+});
+
+// ─── generate_audio ───────────────────────────────────────────────────────────
+
+describe("MCP: generate_audio", () => {
+  it("returns audio data URI and mimeType", async () => {
+    const result = await handleGenerateAudio({ text: "Welcome to the future of video." });
+    expect(result.isError).toBeUndefined();
+    const data = parseText(result);
+    expect(data.jobId).toBeTruthy();
+    expect(data.audio.url).toBeTruthy();
+    expect(data.audio.mimeType).toMatch(/audio/);
+  });
+
+  it("rejects empty text", async () => {
+    const result = await handleGenerateAudio({ text: "" });
+    expect(result.isError).toBe(true);
+    const err = parseText(result);
+    expect(err.error.code).toBe("VALIDATION_ERROR");
+  });
+});
+
+// ─── generate_video_assets ───────────────────────────────────────────────────
+
+describe("MCP: generate_video_assets", () => {
+  it("returns one clip per scene", async () => {
+    const result = await handleGenerateVideoAssets({
+      scenes: [
+        { prompt: "A rocket launching" },
+        { prompt: "Astronaut floating in space" },
+      ],
+    });
+    expect(result.isError).toBeUndefined();
+    const data = parseText(result);
+    expect(data.clips).toHaveLength(2);
+    for (const clip of data.clips) {
+      expect(clip.mimeType).toBeTruthy();
+    }
+  });
+
+  it("rejects empty scenes", async () => {
+    const result = await handleGenerateVideoAssets({ scenes: [] });
+    expect(result.isError).toBe(true);
+  });
+});
+
+// ─── generate_project_from_prompt ────────────────────────────────────────────
+
+describe("MCP: generate_project_from_prompt", () => {
+  it("creates a project from a prompt with scene plan", async () => {
+    const result = await handleGenerateProjectFromPrompt({
+      prompt: "A product launch for new headphones",
+      sceneCount: 3,
+      name: "Headphones Launch",
+    });
+    expect(result.isError).toBeUndefined();
+    const data = parseText(result);
+    expect(data.jobId).toBeTruthy();
+    expect(data.project).toBeTruthy();
+    expect(data.project.templateId).toBe("prompt-to-video");
+    expect(data.scenePlan.scenes).toHaveLength(3);
+  });
+
+  it("generates images when requested", async () => {
+    const result = await handleGenerateProjectFromPrompt({
+      prompt: "A nature documentary",
+      sceneCount: 2,
+      generateImages: true,
+    });
+    expect(result.isError).toBeUndefined();
+    const data = parseText(result);
+    // With mock image provider, imageUrl should be non-empty
+    for (const s of data.scenePlan.scenes) {
+      expect(s.imageUrl).toBeTruthy();
+    }
+  });
+
+  it("rejects empty prompt", async () => {
+    const result = await handleGenerateProjectFromPrompt({ prompt: "" });
+    expect(result.isError).toBe(true);
+  });
+});
+
+// ─── get_generation_status ───────────────────────────────────────────────────
+
+describe("MCP: get_generation_status", () => {
+  it("returns job status after script generation", async () => {
+    const genResult = await handleGenerateScript({
+      prompt: "A quick tutorial",
+      sceneCount: 2,
+    });
+    const { jobId } = parseText(genResult);
+
+    const statusResult = await handleGetGenerationStatus({ jobId });
+    expect(statusResult.isError).toBeUndefined();
+    const job = parseText(statusResult);
+    expect(job.id).toBe(jobId);
+    expect(job.status).toBe("completed");
+  });
+
+  it("returns error for unknown job ID", async () => {
+    const result = await handleGetGenerationStatus({ jobId: "non-existent-job" });
+    expect(result.isError).toBe(true);
+    const err = parseText(result);
+    expect(err.error.code).toBe("JOB_NOT_FOUND");
+  });
+});
+
+// ─── list_generation_jobs ────────────────────────────────────────────────────
+
+describe("MCP: list_generation_jobs", () => {
+  it("returns empty list when no jobs exist", async () => {
+    const result = await handleListGenerationJobs({});
+    expect(result.isError).toBeUndefined();
+    const data = parseText(result);
+    expect(Array.isArray(data.jobs)).toBe(true);
+    expect(data.jobs.length).toBe(0);
+  });
+
+  it("filters by modality", async () => {
+    await handleGenerateScript({ prompt: "Script job", sceneCount: 2 });
+    await handleGenerateAudio({ text: "Audio job" });
+
+    const result = await handleListGenerationJobs({ modality: "audio" });
+    const data = parseText(result);
+    expect(data.jobs.every((j: { modality: string }) => j.modality === "audio")).toBe(true);
+  });
+
+  it("returns VALIDATION_ERROR for unknown modality", async () => {
+    const result = await handleListGenerationJobs({ modality: "unknown-type" });
+    expect(result.isError).toBe(true);
+    const err = parseText(result);
+    expect(err.error.code).toBe("VALIDATION_ERROR");
+  });
+});
+
+// ─── approve_generated_assets ────────────────────────────────────────────────
+
+describe("MCP: approve_generated_assets", () => {
+  it("approves a completed job", async () => {
+    const genResult = await handleGenerateScript({ prompt: "Approve test", sceneCount: 2 });
+    const { jobId } = parseText(genResult);
+
+    const approveResult = await handleApproveGeneratedAssets({ jobId });
+    expect(approveResult.isError).toBeUndefined();
+    const data = parseText(approveResult);
+    expect(data.approved).toBe(true);
+    expect(data.jobId).toBe(jobId);
+  });
+
+  it("returns error for non-existent job", async () => {
+    const result = await handleApproveGeneratedAssets({ jobId: "ghost-job" });
+    expect(result.isError).toBe(true);
+    const err = parseText(result);
+    expect(err.error.code).toBe("JOB_NOT_FOUND");
+  });
+});
+
+// ─── regenerate_scene_asset ──────────────────────────────────────────────────
+
+describe("MCP: regenerate_scene_asset", () => {
+  it("regenerates image for a scene in a project", async () => {
+    const createResult = await handleCreateSceneSequence({
+      templateId: "prompt-to-video",
+      name: "Regen Test",
+      scenes: [
+        { title: "Scene 1", body: "A futuristic city", voiceoverText: "In the future..." },
+        { title: "Scene 2", body: "Robots working" },
+      ],
+    });
+    const project = parseText(createResult);
+
+    const regenResult = await handleRegenerateSceneAsset({
+      projectId: project.id,
+      sceneIndex: 0,
+      assetType: "image",
+      prompt: "A neon-lit cyberpunk cityscape at night",
+    });
+    expect(regenResult.isError).toBeUndefined();
+    const data = parseText(regenResult);
+    expect(data.imageUrl).toBeTruthy();
+    expect(data.sceneIndex).toBe(0);
+    expect(
+      (data.project.inputProps.scenes as Array<{ imageUrl: string }>)[0].imageUrl,
+    ).toBe(data.imageUrl);
+  });
+
+  it("regenerates audio for a scene", async () => {
+    const createResult = await handleCreateSceneSequence({
+      templateId: "prompt-to-video",
+      name: "Audio Regen Test",
+      scenes: [{ title: "Scene 1", body: "Welcome to the show", voiceoverText: "Welcome to the show" }],
+    });
+    const project = parseText(createResult);
+
+    const regenResult = await handleRegenerateSceneAsset({
+      projectId: project.id,
+      sceneIndex: 0,
+      assetType: "audio",
+    });
+    expect(regenResult.isError).toBeUndefined();
+    const data = parseText(regenResult);
+    expect(data.audioUrl).toBeTruthy();
+  });
+
+  it("returns error for invalid project", async () => {
+    const result = await handleRegenerateSceneAsset({
+      projectId: "no-project",
+      sceneIndex: 0,
+      assetType: "image",
+    });
+    expect(result.isError).toBe(true);
+    const err = parseText(result);
+    expect(err.error.code).toBe("PROJECT_NOT_FOUND");
+  });
+
+  it("returns error for out-of-range scene index", async () => {
+    const createResult = await handleCreateSceneSequence({
+      templateId: "prompt-to-video",
+      name: "Index Regen Test",
+      scenes: [{ title: "S1", body: "text" }],
+    });
+    const project = parseText(createResult);
+
+    const result = await handleRegenerateSceneAsset({
+      projectId: project.id,
+      sceneIndex: 99,
+      assetType: "image",
+    });
+    expect(result.isError).toBe(true);
+    const err = parseText(result);
+    expect(err.error.code).toBe("INVALID_SCENE_INDEX");
+  });
+});

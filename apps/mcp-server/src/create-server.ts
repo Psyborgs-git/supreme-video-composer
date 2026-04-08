@@ -35,6 +35,16 @@ import {
   handleGetTemplateScaffold,
   handleUpdateTemplateComposition,
   handleValidateTemplate,
+  // AI generation handlers
+  handleGenerateScript,
+  handleGenerateImages,
+  handleGenerateAudio,
+  handleGenerateVideoAssets,
+  handleGenerateProjectFromPrompt,
+  handleGetGenerationStatus,
+  handleListGenerationJobs,
+  handleApproveGeneratedAssets,
+  handleRegenerateSceneAsset,
   type ToolResult,
 } from "./handlers.js";
 import {
@@ -54,6 +64,13 @@ import {
   registerRemotionWidgetResource,
   REMOTION_WIDGET_URI,
 } from "./remotion-widget/resource.js";
+import {
+  RULE_AI_GENERATION_OVERVIEW,
+  RULE_AI_ASSET_CONSTRAINTS,
+  RULE_AI_PROMPTING,
+  RULE_AI_PROJECT_ASSEMBLY,
+  RULE_AI_SAFETY,
+} from "./ai-rules.js";
 
 const aspectRatioEnum = z.enum([
   ...CANONICAL_ASPECT_RATIO_PRESET_IDS,
@@ -436,6 +453,163 @@ export function createMcpServer(runtime: McpToolRuntime): McpServer {
       sampleInputProps: z.record(z.unknown()).optional().describe("Sample input props to validate"),
     },
     (args) => handleValidateTemplate(args),
+  );
+
+  // ─── AI Generation rule tools ─────────────────────────────────────────────
+
+  server.tool(
+    "rule_ai_generation_overview",
+    "IMPORTANT: Call this first to understand AI generation capabilities, tool map, workflow, and provider configuration",
+    {},
+    () => ({ content: [{ type: "text" as const, text: RULE_AI_GENERATION_OVERVIEW }] }),
+  );
+
+  server.tool(
+    "rule_ai_asset_constraints",
+    "AI generation asset constraints: image/audio/video file limits, resolution requirements, Remotion compatibility",
+    {},
+    () => ({ content: [{ type: "text" as const, text: RULE_AI_ASSET_CONSTRAINTS }] }),
+  );
+
+  server.tool(
+    "rule_ai_prompting",
+    "How to write effective prompts for script, image, audio, and video generation",
+    {},
+    () => ({ content: [{ type: "text" as const, text: RULE_AI_PROMPTING }] }),
+  );
+
+  server.tool(
+    "rule_ai_project_assembly",
+    "How to map AI-generated assets into Remotion projects and templates",
+    {},
+    () => ({ content: [{ type: "text" as const, text: RULE_AI_PROJECT_ASSEMBLY }] }),
+  );
+
+  server.tool(
+    "rule_ai_safety",
+    "AI generation content policy, error handling, provider failures, and idempotency guidance",
+    {},
+    () => ({ content: [{ type: "text" as const, text: RULE_AI_SAFETY }] }),
+  );
+
+  // ─── AI Generation tools ──────────────────────────────────────────────────
+
+  server.tool(
+    "generate_script",
+    "Generate a structured video scene plan (title, body, imagePrompt per scene) from a text prompt using an LM",
+    {
+      prompt: z.string().min(1).describe("The topic or concept to generate a video script for"),
+      sceneCount: z.number().int().min(1).max(20).optional().default(5).describe("Number of scenes to generate"),
+      style: z.string().optional().describe("Pacing/tone: 'fast', 'slow', 'dramatic', 'playful'"),
+      genre: z.string().optional().describe("Video genre: 'documentary', 'product', 'educational', 'social'"),
+    },
+    (args) => handleGenerateScript(args),
+  );
+
+  server.tool(
+    "generate_images",
+    "Generate one image per scene using an image diffusion model. Returns image URLs for each scene",
+    {
+      scenes: z
+        .array(
+          z.object({
+            body: z.string().describe("Scene description (fallback if imagePrompt is missing)"),
+            imagePrompt: z.string().optional().describe("Explicit image generation prompt"),
+          }),
+        )
+        .min(1)
+        .describe("List of scenes to generate images for"),
+      width: z.number().int().optional().describe("Image width in pixels"),
+      height: z.number().int().optional().describe("Image height in pixels"),
+    },
+    (args) => handleGenerateImages(args),
+  );
+
+  server.tool(
+    "generate_audio",
+    "Synthesise narration audio from text using a TTS provider. Returns a data URI (audio/mpeg or audio/wav)",
+    {
+      text: z.string().min(1).describe("The narration text to convert to speech"),
+      voiceId: z.string().optional().describe("Provider-specific voice ID"),
+      speed: z.number().min(0.25).max(4.0).optional().describe("Speaking speed multiplier (1.0 = normal)"),
+      format: z.enum(["mp3", "wav"]).optional().default("mp3").describe("Output audio format"),
+    },
+    (args) => handleGenerateAudio(args),
+  );
+
+  server.tool(
+    "generate_video_assets",
+    "Generate short video clips for each scene using a video generation model (Mode A: assets per scene)",
+    {
+      scenes: z
+        .array(
+          z.object({
+            prompt: z.string().describe("Scene prompt for video generation"),
+            imageUrl: z.string().optional().describe("Optional source image for img2video"),
+            durationSeconds: z.number().optional().describe("Desired clip duration in seconds"),
+          }),
+        )
+        .min(1)
+        .describe("Scenes to generate video clips for"),
+      width: z.number().int().optional().describe("Output width in pixels"),
+      height: z.number().int().optional().describe("Output height in pixels"),
+    },
+    (args) => handleGenerateVideoAssets(args),
+  );
+
+  server.tool(
+    "generate_project_from_prompt",
+    "Full pipeline: prompt → scene plan → (optional) images → (optional) audio → create a prompt-to-video project",
+    {
+      prompt: z.string().min(1).describe("The prompt describing the video to create"),
+      name: z.string().optional().describe("Project name (defaults to generated title)"),
+      sceneCount: z.number().int().min(1).max(20).optional().default(5).describe("Number of scenes"),
+      style: z.string().optional().describe("Pacing/tone style"),
+      generateImages: z.boolean().optional().default(false).describe("Whether to generate scene images"),
+      generateAudio: z.boolean().optional().default(false).describe("Whether to generate narration audio"),
+      aspectRatio: aspectRatioEnum.optional().describe("Project aspect ratio preset"),
+    },
+    (args) => handleGenerateProjectFromPrompt(args),
+  );
+
+  server.tool(
+    "get_generation_status",
+    "Get the current status and outputs of an AI generation job",
+    {
+      jobId: z.string().describe("The generation job ID returned by a generation tool"),
+    },
+    (args) => handleGetGenerationStatus(args),
+  );
+
+  server.tool(
+    "list_generation_jobs",
+    "List AI generation jobs with optional filters by modality and status",
+    {
+      modality: z.enum(["script", "image", "audio", "video"]).optional().describe("Filter by generation modality"),
+      status: z.enum(["queued", "running", "completed", "failed", "cancelled"]).optional().describe("Filter by job status"),
+    },
+    (args) => handleListGenerationJobs(args),
+  );
+
+  server.tool(
+    "approve_generated_assets",
+    "Mark a completed generation job's outputs as approved for use in projects",
+    {
+      jobId: z.string().describe("The generation job ID to approve"),
+    },
+    (args) => handleApproveGeneratedAssets(args),
+  );
+
+  server.tool(
+    "regenerate_scene_asset",
+    "Regenerate the image or audio for a specific scene in an existing project",
+    {
+      projectId: z.string().describe("The project ID"),
+      sceneIndex: z.number().int().min(0).describe("Zero-based index of the scene to regenerate"),
+      assetType: z.enum(["image", "audio"]).describe("Whether to regenerate the image or audio for this scene"),
+      prompt: z.string().optional().describe("Optional explicit prompt (falls back to scene body/voiceoverText)"),
+    },
+    (args) => handleRegenerateSceneAsset(args),
   );
 
   return server;

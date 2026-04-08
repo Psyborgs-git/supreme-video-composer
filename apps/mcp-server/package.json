@@ -25,6 +25,7 @@
     "@studio/shared-types": "*",
     "@studio/template-registry": "*",
     "@studio/renderer": "*",
+    "@studio/ai-generation": "*",
     "@remotion/player": "4.0.445",
     "@remotion/transitions": "4.0.445",
     "@modelcontextprotocol/sdk": "^1.0.0",

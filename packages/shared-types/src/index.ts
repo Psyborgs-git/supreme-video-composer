@@ -354,3 +354,158 @@ export interface Asset {
   metadata?: Record<string, unknown>;
   createdAt: string;
 }
+
+// ─── AI Generation ───────────────────────────────────────────────
+
+/** The type of media to generate */
+export const GenerationModalitySchema = z.enum(["script", "image", "audio", "video"]);
+export type GenerationModality = z.infer<typeof GenerationModalitySchema>;
+
+/** Status lifecycle for an AI generation job (mirrors RenderStatus pattern) */
+export const GenerationStatusSchema = z.enum([
+  "queued",
+  "running",
+  "completed",
+  "failed",
+  "cancelled",
+]);
+export type GenerationStatus = z.infer<typeof GenerationStatusSchema>;
+
+/** Known text/script LM providers */
+export const TextProviderSchema = z.enum(["openai", "anthropic", "google", "ollama", "mock"]);
+export type TextProvider = z.infer<typeof TextProviderSchema>;
+
+/** Known image generation providers */
+export const ImageProviderSchema = z.enum(["openai", "stability", "replicate", "fal", "mock"]);
+export type ImageProvider = z.infer<typeof ImageProviderSchema>;
+
+/** Known audio/TTS generation providers */
+export const AudioProviderSchema = z.enum(["openai", "elevenlabs", "mock"]);
+export type AudioProvider = z.infer<typeof AudioProviderSchema>;
+
+/** Known video generation providers */
+export const VideoProviderSchema = z.enum(["runway", "replicate", "fal", "mock"]);
+export type VideoProvider = z.infer<typeof VideoProviderSchema>;
+
+/** Provider + model selection for any modality */
+export const ProviderConfigSchema = z.object({
+  /** Provider identifier */
+  provider: z.string(),
+  /** Model name or version (e.g., "gpt-4o", "dall-e-3") */
+  model: z.string().optional(),
+  /** Additional provider-specific options */
+  options: z.record(z.unknown()).optional(),
+});
+export type ProviderConfig = z.infer<typeof ProviderConfigSchema>;
+
+/** Provenance metadata stored alongside every AI-generated asset */
+export const GenerationProvenanceSchema = z.object({
+  /** The human prompt that drove this generation */
+  prompt: z.string(),
+  /** Provider used */
+  provider: z.string(),
+  /** Model used */
+  model: z.string().optional(),
+  /** Parent job ID that produced this asset */
+  jobId: z.string().optional(),
+  /** ISO timestamp of generation */
+  generatedAt: z.string(),
+  /** Revision number within the same job (0 = first attempt) */
+  revision: z.number().int().min(0).default(0),
+  /** Safety check outcome */
+  safetyStatus: z.enum(["unchecked", "passed", "flagged", "blocked"]).default("unchecked"),
+});
+export type GenerationProvenance = z.infer<typeof GenerationProvenanceSchema>;
+
+/** A generated scene returned by the script pipeline */
+export const GeneratedSceneSchema = z.object({
+  title: z.string(),
+  body: z.string(),
+  imageUrl: z.string().default(""),
+  durationFrames: z.number().int().min(15).default(150),
+  enterTransition: z.enum(["fade", "blur", "swipe", "zoom", "none"]).default("fade"),
+  exitTransition: z.enum(["fade", "blur", "swipe", "zoom", "none"]).default("fade"),
+  voiceoverText: z.string().default(""),
+  /** Image generation prompt derived from the scene body */
+  imagePrompt: z.string().optional(),
+});
+export type GeneratedScene = z.infer<typeof GeneratedSceneSchema>;
+
+/** A fully formed scene plan with optional audio metadata */
+export const ScenePlanSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  scenes: z.array(GeneratedSceneSchema),
+  narrationScript: z.string().optional(),
+  backgroundMusicStyle: z.string().optional(),
+  suggestedDurationSeconds: z.number().optional(),
+  style: z.string().optional(),
+});
+export type ScenePlan = z.infer<typeof ScenePlanSchema>;
+
+/** Options shared by all generation requests */
+export const GenerationRequestOptionsSchema = z.object({
+  /** Override text/LM provider */
+  textProvider: ProviderConfigSchema.optional(),
+  /** Override image generation provider */
+  imageProvider: ProviderConfigSchema.optional(),
+  /** Override audio/TTS provider */
+  audioProvider: ProviderConfigSchema.optional(),
+  /** Override video generation provider */
+  videoProvider: ProviderConfigSchema.optional(),
+  /** Whether generated assets require explicit approval before being attached */
+  requireApproval: z.boolean().default(false),
+  /** Maximum time in milliseconds before a provider call is aborted */
+  timeoutMs: z.number().int().positive().optional(),
+});
+export type GenerationRequestOptions = z.infer<typeof GenerationRequestOptionsSchema>;
+
+/** Payload for creating an AI generation job */
+export const CreateGenerationJobSchema = z.object({
+  /** Human-readable label for this job */
+  name: z.string().min(1),
+  /** What to generate */
+  modality: GenerationModalitySchema,
+  /** The driving prompt */
+  prompt: z.string().min(1),
+  /** Additional structured inputs (e.g., existing scene plan for image jobs) */
+  inputs: z.record(z.unknown()).optional(),
+  /** Project to attach generated outputs to (if any) */
+  projectId: z.string().optional(),
+  options: GenerationRequestOptionsSchema.optional(),
+});
+export type CreateGenerationJob = z.infer<typeof CreateGenerationJobSchema>;
+
+/** Partial output produced during a multi-step generation job */
+export const GenerationJobOutputSchema = z.object({
+  /** Which step of the pipeline produced this partial */
+  step: z.string(),
+  /** Generated data (scene plan, asset URLs, etc.) */
+  data: z.unknown(),
+  /** Timestamp this step completed */
+  completedAt: z.string(),
+});
+export type GenerationJobOutput = z.infer<typeof GenerationJobOutputSchema>;
+
+/** Full generation job record */
+export const GenerationJobSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  modality: GenerationModalitySchema,
+  prompt: z.string(),
+  inputs: z.record(z.unknown()).optional(),
+  projectId: z.string().optional(),
+  options: GenerationRequestOptionsSchema.optional(),
+  status: GenerationStatusSchema,
+  /** Progress 0-1 */
+  progress: z.number().min(0).max(1).nullable(),
+  /** Partial outputs collected so far */
+  outputs: z.array(GenerationJobOutputSchema),
+  /** IDs of assets registered as a result of this job */
+  assetIds: z.array(z.string()),
+  error: z.string().nullable(),
+  createdAt: z.string(),
+  startedAt: z.string().nullable(),
+  completedAt: z.string().nullable(),
+});
+export type GenerationJob = z.infer<typeof GenerationJobSchema>;
