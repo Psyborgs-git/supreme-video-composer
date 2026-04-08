@@ -21,6 +21,7 @@
     "test:types": "npm run --workspace @studio/shared-types test",
     "test:registry": "npm run --workspace @studio/template-registry test",
     "test:renderer": "npm run --workspace @studio/renderer test",
+    "test:ai": "npm run --workspace @studio/ai-generation test",
     "test:mcp": "npm run --workspace @studio/mcp-server test",
     "test:mcp:e2e": "npm run --workspace @studio/mcp-server test:e2e",
     "studio": "npm run --workspace @studio/remotion-compositions studio",

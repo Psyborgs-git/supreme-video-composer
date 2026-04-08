@@ -31,6 +31,7 @@ import {
   QualityPresetSchema,
   AssetTypeSchema,
   normalizeAspectRatioConfig,
+  GenerationModalitySchema,
 } from "@studio/shared-types";
 import type { StorageConfig } from "./storage";
 import {
@@ -45,6 +46,15 @@ import {
   renameAsset,
   saveUploadedAssets,
 } from "./storage";
+import {
+  generationJobStore,
+  createJobRecord,
+  updateJobStatus,
+  addJobOutput,
+  addJobAsset,
+  generateJobId,
+  runFullGenerationPipeline,
+} from "@studio/ai-generation";
 
 export function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -548,6 +558,105 @@ export function createApp(
     if (!job) return c.json({ error: "Render job not found" }, 404);
     const success = renderQueue.cancelJob(jobId);
     return c.json({ success, jobId });
+  });
+
+  // ─── AI Generation ─────────────────────────────────────────────────────────
+
+  app.get("/api/generation", (c) => {
+    const modality = c.req.query("modality");
+    const status = c.req.query("status");
+
+    let jobs = Array.from(generationJobStore.values());
+    if (modality) jobs = jobs.filter((j) => j.modality === modality);
+    if (status) jobs = jobs.filter((j) => j.status === status);
+
+    jobs.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return c.json({ jobs });
+  });
+
+  app.get("/api/generation/:jobId", (c) => {
+    const job = generationJobStore.get(c.req.param("jobId"));
+    if (!job) return c.json({ error: "Generation job not found" }, 404);
+    return c.json(job);
+  });
+
+  app.post("/api/generation", async (c) => {
+    const body = await c.req
+      .json<{
+        name?: string;
+        modality?: string;
+        prompt?: string;
+        inputs?: Record<string, unknown>;
+        projectId?: string;
+        options?: Record<string, unknown>;
+      }>()
+      .catch(() => ({})) as Record<string, unknown>;
+
+    if (!body.prompt || typeof body.prompt !== "string" || !body.prompt.trim()) {
+      return c.json({ error: "prompt is required" }, 400);
+    }
+
+    const modalityParse = GenerationModalitySchema.safeParse(body.modality);
+    if (!modalityParse.success) {
+      return c.json(
+        { error: `modality must be one of: script, image, audio, video` },
+        400,
+      );
+    }
+
+    const id = generateJobId();
+    const job = createJobRecord(id, {
+      name: typeof body.name === "string" && body.name.trim() ? body.name.trim() : `${modalityParse.data} generation`,
+      modality: modalityParse.data,
+      prompt: body.prompt.trim(),
+      inputs: typeof body.inputs === "object" && body.inputs !== null ? body.inputs as Record<string, unknown> : undefined,
+      projectId: typeof body.projectId === "string" ? body.projectId : undefined,
+    });
+
+    // Fire the pipeline asynchronously (non-blocking for the API response)
+    (async () => {
+      try {
+        updateJobStatus(id, "running", { progress: 0 });
+
+        const inputs = job.inputs ?? {};
+        const result = await runFullGenerationPipeline({
+          prompt: job.prompt,
+          sceneCount: typeof inputs.sceneCount === "number" ? inputs.sceneCount : 5,
+          style: typeof inputs.style === "string" ? inputs.style : undefined,
+          genre: typeof inputs.genre === "string" ? inputs.genre : undefined,
+          generateImages: job.modality === "image",
+          generateAudio: job.modality === "audio",
+        });
+
+        updateJobStatus(id, "running", { progress: 0.8 });
+        addJobOutput(id, "scenePlan", result.scenePlan);
+
+        if (result.sceneImages) {
+          addJobOutput(id, "sceneImages", result.sceneImages);
+        }
+        if (result.narrationAudio) {
+          addJobOutput(id, "narrationAudio", result.narrationAudio);
+        }
+
+        updateJobStatus(id, "completed", { progress: 1 });
+      } catch (error) {
+        updateJobStatus(id, "failed", {
+          error: error instanceof Error ? error.message : String(error),
+        } as Parameters<typeof updateJobStatus>[2]);
+      }
+    })().catch(() => {/* fire-and-forget */});
+
+    return c.json(job, 202);
+  });
+
+  app.post("/api/generation/:jobId/cancel", (c) => {
+    const job = generationJobStore.get(c.req.param("jobId"));
+    if (!job) return c.json({ error: "Generation job not found" }, 404);
+    if (job.status !== "queued" && job.status !== "running") {
+      return c.json({ error: `Cannot cancel job with status "${job.status}"` }, 409);
+    }
+    updateJobStatus(job.id, "cancelled");
+    return c.json({ success: true, jobId: job.id });
   });
 
   return { app, projectStore, renderJobStore, assetStore };

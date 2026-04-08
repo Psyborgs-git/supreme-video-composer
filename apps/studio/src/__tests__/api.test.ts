@@ -1013,3 +1013,136 @@ describe("Regression: render no longer stuck at queued/0%", () => {
     expect(done.outputPath).toBe("/renders/done.mp4");
   });
 });
+
+// ─── AI Generation endpoints ──────────────────────────────────────────────────
+
+describe("POST /api/generation — create generation job", () => {
+  it("returns 202 with a queued job for script modality", async () => {
+    const { app } = createApp(new RenderQueue());
+
+    const res = await app.request("/api/generation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "My Script", modality: "script", prompt: "A cat on the moon" }),
+    });
+
+    expect(res.status).toBe(202);
+    const job = await res.json() as Record<string, unknown>;
+    expect(job.id).toBeTruthy();
+    expect(job.status).toBe("queued");
+    expect(job.modality).toBe("script");
+    expect(job.prompt).toBe("A cat on the moon");
+  });
+
+  it("returns 400 when prompt is missing", async () => {
+    const { app } = createApp(new RenderQueue());
+
+    const res = await app.request("/api/generation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ modality: "script" }),
+    });
+
+    expect(res.status).toBe(400);
+    const body = await res.json() as { error: string };
+    expect(body.error).toMatch(/prompt/i);
+  });
+
+  it("returns 400 for unknown modality", async () => {
+    const { app } = createApp(new RenderQueue());
+
+    const res = await app.request("/api/generation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ modality: "unknown-modality", prompt: "test" }),
+    });
+
+    expect(res.status).toBe(400);
+    const body = await res.json() as { error: string };
+    expect(body.error).toMatch(/modality/i);
+  });
+});
+
+describe("GET /api/generation/:jobId — poll generation job", () => {
+  it("returns 404 for unknown job", async () => {
+    const { app } = createApp(new RenderQueue());
+
+    const res = await app.request("/api/generation/no-such-job");
+    expect(res.status).toBe(404);
+  });
+
+  it("returns job after creation", async () => {
+    const { app } = createApp(new RenderQueue());
+
+    const createRes = await app.request("/api/generation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ modality: "image", prompt: "A futuristic city" }),
+    });
+    const job = await createRes.json() as { id: string };
+
+    const getRes = await app.request(`/api/generation/${job.id}`);
+    expect(getRes.status).toBe(200);
+    const fetched = await getRes.json() as { id: string; modality: string };
+    expect(fetched.id).toBe(job.id);
+    expect(fetched.modality).toBe("image");
+  });
+});
+
+describe("GET /api/generation — list generation jobs", () => {
+  it("returns empty list initially", async () => {
+    const { app } = createApp(new RenderQueue());
+
+    const res = await app.request("/api/generation");
+    expect(res.status).toBe(200);
+    const body = await res.json() as { jobs: unknown[] };
+    expect(Array.isArray(body.jobs)).toBe(true);
+  });
+
+  it("filters by modality", async () => {
+    const { app } = createApp(new RenderQueue());
+
+    await app.request("/api/generation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ modality: "script", prompt: "First" }),
+    });
+    await app.request("/api/generation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ modality: "image", prompt: "Second" }),
+    });
+
+    const res = await app.request("/api/generation?modality=image");
+    const body = await res.json() as { jobs: { modality: string }[] };
+    expect(body.jobs.every((j) => j.modality === "image")).toBe(true);
+  });
+});
+
+describe("POST /api/generation/:jobId/cancel — cancel generation job", () => {
+  it("cancels a queued or running job (or returns 409 if already completed)", async () => {
+    const { app } = createApp(new RenderQueue());
+
+    const createRes = await app.request("/api/generation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ modality: "audio", prompt: "Narrate this" }),
+    });
+    const job = await createRes.json() as { id: string };
+
+    const cancelRes = await app.request(`/api/generation/${job.id}/cancel`, {
+      method: "POST",
+    });
+    // The mock pipeline may complete synchronously before we can cancel; accept either outcome.
+    expect([200, 409]).toContain(cancelRes.status);
+  });
+
+  it("returns 404 when cancelling unknown job", async () => {
+    const { app } = createApp(new RenderQueue());
+
+    const res = await app.request("/api/generation/ghost-job/cancel", {
+      method: "POST",
+    });
+    expect(res.status).toBe(404);
+  });
+});

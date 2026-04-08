@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Asset, AssetType } from "@studio/shared-types";
+import { AiGenerationPanel } from "../components/AiGenerationPanel";
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -21,6 +22,7 @@ export const Assets: React.FC = () => {
   const [renamingAssetId, setRenamingAssetId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const fetchAssets = async () => {
@@ -160,10 +162,26 @@ export const Assets: React.FC = () => {
 
   return (
     <div className="p-4 sm:p-8 max-w-7xl mx-auto">
-      <div className="mb-5 sm:mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold mb-1">Assets</h1>
-        <p className="text-gray-500 dark:text-zinc-400 text-sm sm:text-base">Upload and manage media files for your templates</p>
+      <div className="mb-5 sm:mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold mb-1">Assets</h1>
+          <p className="text-gray-500 dark:text-zinc-400 text-sm sm:text-base">Upload and manage media files for your templates</p>
+        </div>
+        <button
+          onClick={() => setAiPanelOpen(true)}
+          className="shrink-0 flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
+          title="Generate assets with AI"
+        >
+          ✨ <span className="hidden sm:inline">AI Generate</span>
+        </button>
       </div>
+
+      {aiPanelOpen && (
+        <AiGenerationPanel
+          onClose={() => setAiPanelOpen(false)}
+          onJobCreated={() => void fetchAssets()}
+        />
+      )}
 
       <div className="grid gap-2 sm:gap-4 grid-cols-2 sm:grid-cols-[1.4fr,180px,120px] mb-5 sm:mb-6">
         <input

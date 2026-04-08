@@ -339,3 +339,113 @@ No circular dependencies. Rebuild order:
 2. remotion-compositions, template-registry, renderer (parallel)
 3. template-registry (depends on remotion-compositions)
 4. mcp-server, studio (parallel, depend on all above)
+
+---
+
+## AI Generation Layer (`packages/ai-generation`)
+
+### Overview
+
+The `@studio/ai-generation` package is the server-side AI generation layer. It is consumed by:
+- `apps/studio/src/api.ts` (Studio API `/api/generation` endpoints)
+- `apps/mcp-server/src/handlers.ts` (MCP tools)
+- `apps/studio/src/services/ai-generation.ts` (convenience wrappers for UI)
+
+### Architecture
+
+```
+packages/ai-generation/src/
+├── index.ts                   ← public barrel export
+├── pipelines/
+│   ├── script.ts              ← runScriptPipeline (prompt → ScenePlan)
+│   ├── image.ts               ← runImagePipeline (scenes → image URLs)
+│   ├── audio.ts               ← runAudioPipeline (text → audio data URI)
+│   ├── video.ts               ← runSceneClipsPipeline / runVideoFromPlanPipeline
+│   └── full.ts                ← runFullGenerationPipeline (all steps combined)
+├── providers/
+│   ├── types.ts               ← TextProviderAdapter, ImageProviderAdapter, etc.
+│   ├── mock.ts                ← Deterministic mock adapters (no API key needed)
+│   ├── openai.ts              ← OpenAI GPT / DALL-E / TTS adapters
+│   └── factory.ts             ← createTextProvider / createImageProvider / etc.
+└── utils/
+    └── job-store.ts           ← In-memory GenerationJob store + lifecycle helpers
+```
+
+### DSTsx Integration
+
+[DSTsx](https://github.com/Psyborgs-git/DSTsx) (`@jaex/dstsx`) is a TypeScript port of [DSPy](https://github.com/stanfordnlp/dspy). It provides:
+
+- **Signatures** — typed `inputs → outputs` interfaces for LM calls
+- **Modules** — composable LM pipelines (Predict, ChainOfThought, etc.)
+- **Adapters** — format signatures into provider message schemas
+- **MockLM** — deterministic test doubles for LM calls
+
+The pipeline modules in `packages/ai-generation/src/pipelines/` are designed to be extended with DSTsx modules for self-improving prompts and few-shot examples. The current implementation calls provider adapters directly; adding DSTsx optimisation requires:
+1. Wrapping each pipeline in a `Module.forward()` call
+2. Defining a `Signature` for the structured output
+3. Running `BootstrapFewShot` or another optimizer with a training set
+
+### Provider Adapters
+
+Providers are selected by environment variables at runtime. No provider-specific code runs if the mock provider is selected (default).
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `AI_TEXT_PROVIDER` | `mock` | LM for script/scene generation |
+| `AI_TEXT_MODEL` | provider default | Model name for text provider |
+| `AI_IMAGE_PROVIDER` | `mock` | Image diffusion model |
+| `AI_IMAGE_MODEL` | provider default | Model name for image provider |
+| `AI_AUDIO_PROVIDER` | `mock` | TTS audio provider |
+| `AI_AUDIO_MODEL` | provider default | Model name for audio |
+| `AI_VIDEO_PROVIDER` | `mock` | Video generation model |
+| `OPENAI_API_KEY` | — | Required for `openai` providers |
+
+### Generation Job Lifecycle
+
+Jobs are tracked in-memory in `generationJobStore` (a `Map<string, GenerationJob>`).
+
+```
+queued → running → completed
+                 → failed
+       → cancelled (from queued or running)
+```
+
+Each job records partial outputs as they are produced, enabling progress polling before completion.
+
+### Video Generation Modes
+
+**Mode A** (assets-per-scene): `generate_video_assets` or `runSceneClipsPipeline`
+- Each scene becomes a separate video clip
+- Clips are returned as URLs for asset registration
+- Use as source assets in `social-media-reel`, `dynamic-video`, etc.
+
+**Mode B** (structured project): `generate_project_from_prompt` or `runFullGenerationPipeline`
+- Produces a structured `ScenePlan`
+- Scenes are assembled into a `prompt-to-video` project via `create_scene_sequence`
+- Rendered through the normal Remotion render pipeline
+
+### Adding a New AI Provider
+
+1. Create an adapter class implementing `TextProviderAdapter` (or image/audio/video) in `packages/ai-generation/src/providers/yourprovider.ts`
+2. Add it to the switch statement in `packages/ai-generation/src/providers/factory.ts`
+3. Export from `packages/ai-generation/src/providers/index.ts`
+4. Document the env variable in this file and in `docs/ARCHITECTURE.md`
+5. Add tests in `packages/ai-generation/src/__tests__/pipelines.test.ts`
+
+### Updated Dependency Graph
+
+```
+┌─ shared-types (no deps)
+│
+├─ ai-generation (→ shared-types)
+│
+├─ remotion-compositions (→ shared-types)
+│
+├─ template-registry (→ shared-types, remotion-compositions)
+│
+├─ renderer (→ shared-types)
+│
+└─ mcp-server (→ shared-types, template-registry, renderer, ai-generation)
+
+studio (→ shared-types, template-registry, renderer, remotion-compositions, ai-generation)
+```

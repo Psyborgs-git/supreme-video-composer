@@ -7,6 +7,7 @@ import { useEditorStore } from "@/stores/editorStore";
 import { PropsForm } from "@/components/PropsForm";
 import { AspectRatioSelector } from "@/components/AspectRatioSelector";
 import { ExportPanel } from "@/components/ExportPanel";
+import { AiGenerationPanel } from "@/components/AiGenerationPanel";
 import { ASPECT_RATIO_PRESETS } from "@studio/shared-types";
 import type { AspectRatioPreset } from "@studio/shared-types";
 
@@ -68,6 +69,7 @@ export const Editor: React.FC = () => {
   const playerRef = useRef<PlayerRef>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"properties" | "export">("properties");
+  const [aiPanelOpen, setAiPanelOpen] = useState(false);
 
   const {
     inputProps,
@@ -144,8 +146,19 @@ export const Editor: React.FC = () => {
   const sidebarContent = (
     <div className="flex flex-col h-full">
       <div className="p-4 border-b border-gray-200 dark:border-zinc-800">
-        <h2 className="font-semibold text-base dark:text-zinc-100">{template.manifest.name}</h2>
-        <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">{template.manifest.description}</p>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <h2 className="font-semibold text-base dark:text-zinc-100">{template.manifest.name}</h2>
+            <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">{template.manifest.description}</p>
+          </div>
+          <button
+            onClick={() => setAiPanelOpen((v) => !v)}
+            className="shrink-0 flex items-center gap-1 px-2 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition-colors"
+            title="AI generation assist"
+          >
+            ✨ AI
+          </button>
+        </div>
       </div>
 
       {/* Tab bar */}
@@ -265,6 +278,9 @@ export const Editor: React.FC = () => {
 
   return (
     <>
+      {aiPanelOpen && (
+        <AiGenerationPanel onClose={() => setAiPanelOpen(false)} />
+      )}
       {/* Desktop layout: side-by-side */}
       <div className="hidden lg:flex h-[calc(100vh-57px)]">
         {/* Left: Preview */}

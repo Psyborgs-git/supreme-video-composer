@@ -584,3 +584,262 @@ npm run --workspace @studio/mcp-server type-check
 - [ARCHITECTURE.md](ARCHITECTURE.md) — System design
 - [EXPORT_FORMATS.md](EXPORT_FORMATS.md) — Codec details
 - [TEMPLATES.md](TEMPLATES.md) — Template inputProps schemas
+
+---
+
+## AI Generation Tools
+
+These tools call LM and diffusion model providers to create images, audio narration, and video assets, then assemble them into Remotion projects.
+
+### Rule Tools (read first)
+
+| Tool | Description |
+|------|-------------|
+| `rule_ai_generation_overview` | Capabilities, tool map, workflow, provider configuration |
+| `rule_ai_asset_constraints` | Image/audio/video file limits, Remotion compatibility |
+| `rule_ai_prompting` | How to write effective prompts for each modality |
+| `rule_ai_project_assembly` | Mapping generated assets into projects and templates |
+| `rule_ai_safety` | Content policy, error handling, provider failures |
+
+### Generation Tools
+
+#### `generate_script`
+
+Generate a structured video scene plan from a text prompt.
+
+**Parameters:**
+- `prompt` (string, required) — The topic or concept
+- `sceneCount` (integer, 1–20, default: 5) — Number of scenes to generate
+- `style` (string, optional) — Pacing: `"fast"`, `"slow"`, `"dramatic"`, `"playful"`
+- `genre` (string, optional) — Type: `"documentary"`, `"product"`, `"educational"`, `"social"`
+
+**Returns:**
+```json
+{
+  "jobId": "gen-xxxx",
+  "scenePlan": {
+    "title": "string",
+    "description": "string",
+    "narrationScript": "string",
+    "backgroundMusicStyle": "string",
+    "scenes": [
+      {
+        "title": "string",
+        "body": "string",
+        "imagePrompt": "string",
+        "voiceoverText": "string",
+        "durationFrames": 150,
+        "enterTransition": "fade",
+        "exitTransition": "fade",
+        "imageUrl": ""
+      }
+    ]
+  }
+}
+```
+
+---
+
+#### `generate_images`
+
+Generate images for a list of scene descriptions using a diffusion model.
+
+**Parameters:**
+- `scenes` (array, required) — Each item: `{ body: string, imagePrompt?: string }`
+- `width` (integer, optional) — Output image width in pixels
+- `height` (integer, optional) — Output image height in pixels
+
+**Returns:**
+```json
+{
+  "jobId": "gen-xxxx",
+  "images": [
+    { "imageUrl": "https://...", "usedPrompt": "string" }
+  ]
+}
+```
+
+---
+
+#### `generate_audio`
+
+Synthesise narration audio from text using a TTS provider.
+
+**Parameters:**
+- `text` (string, required) — The narration text
+- `voiceId` (string, optional) — Provider voice ID
+- `speed` (number, 0.25–4.0, optional) — Speaking speed multiplier
+- `format` (`"mp3"` | `"wav"`, default: `"mp3"`) — Output format
+
+**Returns:**
+```json
+{
+  "jobId": "gen-xxxx",
+  "audio": {
+    "url": "data:audio/mpeg;base64,...",
+    "mimeType": "audio/mpeg",
+    "durationSeconds": 12.5
+  }
+}
+```
+
+---
+
+#### `generate_video_assets`
+
+Generate short video clips per scene (Mode A: assets-per-scene).
+
+**Parameters:**
+- `scenes` (array, required) — Each: `{ prompt: string, imageUrl?: string, durationSeconds?: number }`
+- `width` (integer, optional)
+- `height` (integer, optional)
+
+**Returns:**
+```json
+{
+  "jobId": "gen-xxxx",
+  "clips": [
+    { "url": "https://...", "mimeType": "video/mp4", "durationSeconds": 5 }
+  ]
+}
+```
+
+---
+
+#### `generate_project_from_prompt`
+
+Full pipeline: prompt → scene plan → (optional) images → (optional) audio → create a `prompt-to-video` project.
+
+**Parameters:**
+- `prompt` (string, required) — Describes the video to create
+- `name` (string, optional) — Project name (defaults to generated title)
+- `sceneCount` (integer, 1–20, default: 5)
+- `style` (string, optional)
+- `generateImages` (boolean, default: false) — Generate images for each scene
+- `generateAudio` (boolean, default: false) — Generate narration audio
+- `aspectRatio` (enum, optional) — Aspect ratio preset
+
+**Returns:**
+```json
+{
+  "jobId": "gen-xxxx",
+  "project": { /* Project object */ },
+  "scenePlan": { /* ScenePlan object */ }
+}
+```
+
+---
+
+#### `get_generation_status`
+
+Retrieve the current status and outputs of a generation job.
+
+**Parameters:**
+- `jobId` (string, required)
+
+**Returns:** `GenerationJob` object with `status`, `outputs`, `assetIds`, `error`.
+
+---
+
+#### `list_generation_jobs`
+
+List all generation jobs with optional filters.
+
+**Parameters:**
+- `modality` (`"script"` | `"image"` | `"audio"` | `"video"`, optional)
+- `status` (`"queued"` | `"running"` | `"completed"` | `"failed"` | `"cancelled"`, optional)
+
+**Returns:** `{ jobs: GenerationJob[] }`
+
+---
+
+#### `approve_generated_assets`
+
+Mark a completed generation job's outputs as approved.
+
+**Parameters:**
+- `jobId` (string, required)
+
+**Returns:** `{ approved: true, jobId, outputs }`
+
+---
+
+#### `regenerate_scene_asset`
+
+Regenerate the image or audio for a specific scene in an existing project.
+
+**Parameters:**
+- `projectId` (string, required)
+- `sceneIndex` (integer, required) — Zero-based index
+- `assetType` (`"image"` | `"audio"`, required)
+- `prompt` (string, optional) — Explicit prompt (falls back to scene body/voiceoverText)
+
+**Returns:** `{ project, imageUrl?, audioUrl?, sceneIndex }`
+
+---
+
+### Workflow Examples
+
+#### Prompt → Scenes → Images → Project → Render
+
+```
+1. generate_script({ prompt: "Space documentary", sceneCount: 5 })
+   → { jobId, scenePlan: { scenes: [...] } }
+
+2. generate_images({ scenes: scenePlan.scenes.map(s => ({ body: s.body, imagePrompt: s.imagePrompt })) })
+   → { images: [{ imageUrl, usedPrompt }, ...] }
+
+3. create_scene_sequence({
+     templateId: "prompt-to-video",
+     name: "Space Documentary",
+     scenes: scenePlan.scenes.map((s, i) => ({ ...s, imageUrl: images[i].imageUrl }))
+   })
+   → { id: "project-xxx", ... }
+
+4. render_project({ projectId: "project-xxx" })
+   → { jobId: "render-xxx", status: "queued" }
+```
+
+#### Prompt → TTS Narration → prompt-to-video Project
+
+```
+1. generate_script({ prompt: "Product launch for AcmePro v2", sceneCount: 4 })
+   → { scenePlan }
+
+2. generate_audio({ text: scenePlan.narrationScript })
+   → { audio: { url: "data:audio/mpeg;base64,..." } }
+
+3. create_scene_sequence({ templateId: "prompt-to-video", name: "AcmePro Launch", scenes: scenePlan.scenes })
+   → { id: "project-yyy" }
+```
+
+#### Quick One-Call Generation
+
+```
+generate_project_from_prompt({
+  prompt: "A 3-scene explainer about renewable energy",
+  sceneCount: 3,
+  generateImages: true,
+  generateAudio: false,
+  aspectRatio: "16/9"
+})
+→ { jobId, project, scenePlan }
+```
+
+### Generation Error Handling
+
+| Error Code | Meaning |
+|---|---|
+| `VALIDATION_ERROR` | Required param missing or invalid |
+| `GENERATION_FAILED` | Provider API returned an error |
+| `JOB_NOT_FOUND` | jobId does not exist |
+| `JOB_NOT_COMPLETED` | Trying to approve a non-completed job |
+| `PROJECT_NOT_FOUND` | projectId not found for regeneration |
+| `INVALID_SCENE_INDEX` | Scene index out of range |
+
+**Retry pattern:**
+1. Check `error` field in the job or error response
+2. For `GENERATION_FAILED`: revise prompt or check API key env var
+3. For rate limits: wait and retry with the same params
+4. Use `regenerate_scene_asset` to re-roll one scene without restarting the full pipeline
+

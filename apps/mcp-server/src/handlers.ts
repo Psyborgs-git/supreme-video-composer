@@ -11,6 +11,7 @@ import type {
   ExportFormat,
   Asset,
   AssetType,
+  GenerationJob,
 } from "@studio/shared-types";
 import {
   ASPECT_RATIO_PRESETS,
@@ -18,7 +19,21 @@ import {
   normalizeAspectRatioConfig,
   QUALITY_CRF,
   AssetTypeSchema,
+  GenerationModalitySchema,
 } from "@studio/shared-types";
+import {
+  generationJobStore,
+  clearGenerationJobStore,
+  createJobRecord,
+  updateJobStatus,
+  addJobOutput,
+  generateJobId,
+  runScriptPipeline,
+  runImagePipeline,
+  runAudioPipeline,
+  runSceneClipsPipeline,
+  runFullGenerationPipeline,
+} from "@studio/ai-generation";
 import { clearSessionProjects } from "./remotion-app/utils.js";
 import { clearCreateVideoProjectSessions } from "./remotion-app/tools.js";
 
@@ -40,6 +55,7 @@ export function clearStores() {
   projectStore.clear();
   renderJobStore.clear();
   assetStore.clear();
+  clearGenerationJobStore();
   clearSessionProjects();
   clearCreateVideoProjectSessions();
 }
@@ -956,4 +972,372 @@ export async function handleValidateTemplate(args: {
     valid: true,
     frameCount: template.manifest.defaultDurationInFrames,
   });
+}
+
+// ─── AI Generation handlers ──────────────────────────────────────
+
+/**
+ * generate_script — generate a structured scene plan from a text prompt.
+ */
+export async function handleGenerateScript(args: {
+  prompt: string;
+  sceneCount?: number;
+  style?: string;
+  genre?: string;
+}): Promise<ToolResult> {
+  const { prompt, sceneCount = 5, style, genre } = args;
+
+  if (!prompt || !prompt.trim()) {
+    return errorResult("VALIDATION_ERROR", "prompt is required and must not be empty");
+  }
+
+  const id = generateJobId();
+  createJobRecord(id, { name: `Script: ${prompt.slice(0, 40)}`, modality: "script", prompt });
+
+  try {
+    updateJobStatus(id, "running", { progress: 0 });
+    const plan = await runScriptPipeline({ prompt, sceneCount, style, genre });
+    updateJobStatus(id, "completed", { progress: 1 });
+    addJobOutput(id, "scenePlan", plan);
+    return okResult({ jobId: id, scenePlan: plan });
+  } catch (error) {
+    updateJobStatus(id, "failed");
+    return errorResult(
+      "GENERATION_FAILED",
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+}
+
+/**
+ * generate_images — generate images for a list of scene descriptions.
+ */
+export async function handleGenerateImages(args: {
+  scenes: Array<{ body: string; imagePrompt?: string }>;
+  width?: number;
+  height?: number;
+}): Promise<ToolResult> {
+  const { scenes, width, height } = args;
+
+  if (!scenes || scenes.length === 0) {
+    return errorResult("VALIDATION_ERROR", "scenes array is required and must not be empty");
+  }
+
+  const id = generateJobId();
+  createJobRecord(id, {
+    name: `Images for ${scenes.length} scene(s)`,
+    modality: "image",
+    prompt: scenes.map((s) => s.imagePrompt ?? s.body).join("; ").slice(0, 100),
+  });
+
+  try {
+    updateJobStatus(id, "running", { progress: 0 });
+    const results = await runImagePipeline(
+      scenes.map((s) => ({ body: s.body, imagePrompt: s.imagePrompt, width, height })),
+    );
+    updateJobStatus(id, "completed", { progress: 1 });
+    addJobOutput(id, "sceneImages", results);
+    return okResult({ jobId: id, images: results });
+  } catch (error) {
+    updateJobStatus(id, "failed");
+    return errorResult(
+      "GENERATION_FAILED",
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+}
+
+/**
+ * generate_audio — synthesise narration audio from text.
+ */
+export async function handleGenerateAudio(args: {
+  text: string;
+  voiceId?: string;
+  speed?: number;
+  format?: "mp3" | "wav";
+}): Promise<ToolResult> {
+  const { text, voiceId, speed, format } = args;
+
+  if (!text || !text.trim()) {
+    return errorResult("VALIDATION_ERROR", "text is required and must not be empty");
+  }
+
+  const id = generateJobId();
+  createJobRecord(id, {
+    name: `Audio: ${text.slice(0, 40)}`,
+    modality: "audio",
+    prompt: text,
+  });
+
+  try {
+    updateJobStatus(id, "running", { progress: 0 });
+    const result = await runAudioPipeline({ text, voiceId, speed, format });
+    updateJobStatus(id, "completed", { progress: 1 });
+    addJobOutput(id, "narrationAudio", result);
+    return okResult({ jobId: id, audio: result });
+  } catch (error) {
+    updateJobStatus(id, "failed");
+    return errorResult(
+      "GENERATION_FAILED",
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+}
+
+/**
+ * generate_video_assets — generate video clips for each scene (Mode A).
+ */
+export async function handleGenerateVideoAssets(args: {
+  scenes: Array<{ prompt: string; imageUrl?: string; durationSeconds?: number }>;
+  width?: number;
+  height?: number;
+}): Promise<ToolResult> {
+  const { scenes, width, height } = args;
+
+  if (!scenes || scenes.length === 0) {
+    return errorResult("VALIDATION_ERROR", "scenes array is required and must not be empty");
+  }
+
+  const id = generateJobId();
+  createJobRecord(id, {
+    name: `Video clips for ${scenes.length} scene(s)`,
+    modality: "video",
+    prompt: scenes.map((s) => s.prompt).join("; ").slice(0, 100),
+  });
+
+  try {
+    updateJobStatus(id, "running", { progress: 0 });
+    const results = await runSceneClipsPipeline(
+      scenes.map((s) => ({ ...s, width, height })),
+    );
+    updateJobStatus(id, "completed", { progress: 1 });
+    addJobOutput(id, "videoClips", results);
+    return okResult({ jobId: id, clips: results });
+  } catch (error) {
+    updateJobStatus(id, "failed");
+    return errorResult(
+      "GENERATION_FAILED",
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+}
+
+/**
+ * generate_project_from_prompt — run the full generation pipeline and create
+ * a prompt-to-video project from the results.
+ */
+export async function handleGenerateProjectFromPrompt(args: {
+  prompt: string;
+  name?: string;
+  sceneCount?: number;
+  style?: string;
+  generateImages?: boolean;
+  generateAudio?: boolean;
+  aspectRatio?: string;
+}): Promise<ToolResult> {
+  const {
+    prompt,
+    name,
+    sceneCount = 5,
+    style,
+    generateImages = false,
+    generateAudio = false,
+    aspectRatio,
+  } = args;
+
+  if (!prompt || !prompt.trim()) {
+    return errorResult("VALIDATION_ERROR", "prompt is required and must not be empty");
+  }
+
+  const jobId = generateJobId();
+  createJobRecord(jobId, {
+    name: name ?? `Project: ${prompt.slice(0, 40)}`,
+    modality: "script",
+    prompt,
+  });
+
+  try {
+    updateJobStatus(jobId, "running", { progress: 0 });
+
+    const output = await runFullGenerationPipeline({
+      prompt,
+      sceneCount,
+      style,
+      generateImages,
+      generateAudio,
+    });
+
+    updateJobStatus(jobId, "running", { progress: 0.7 });
+    addJobOutput(jobId, "scenePlan", output.scenePlan);
+
+    if (output.sceneImages) {
+      addJobOutput(jobId, "sceneImages", output.sceneImages);
+    }
+    if (output.narrationAudio) {
+      addJobOutput(jobId, "narrationAudio", output.narrationAudio);
+    }
+
+    // Create a prompt-to-video project from the generated scene plan
+    const projectResult = await handleCreateSceneSequence({
+      templateId: "prompt-to-video",
+      name: name ?? output.scenePlan.title,
+      scenes: output.scenePlan.scenes.map((s) => ({
+        title: s.title,
+        body: s.body,
+        imageUrl: s.imageUrl,
+        durationFrames: s.durationFrames,
+        enterTransition: s.enterTransition,
+        exitTransition: s.exitTransition,
+        voiceoverText: s.voiceoverText,
+      })),
+      aspectRatio,
+    });
+
+    if (projectResult.isError) {
+      updateJobStatus(jobId, "failed");
+      return projectResult;
+    }
+
+    updateJobStatus(jobId, "completed", { progress: 1 });
+
+    const project = JSON.parse(projectResult.content[0].text);
+    return okResult({ jobId, project, scenePlan: output.scenePlan });
+  } catch (error) {
+    updateJobStatus(jobId, "failed");
+    return errorResult(
+      "GENERATION_FAILED",
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+}
+
+/**
+ * get_generation_status — retrieve the current state of a generation job.
+ */
+export async function handleGetGenerationStatus(args: {
+  jobId: string;
+}): Promise<ToolResult> {
+  const job = generationJobStore.get(args.jobId);
+  if (!job) {
+    return errorResult("JOB_NOT_FOUND", `Generation job "${args.jobId}" not found`);
+  }
+  return okResult(job);
+}
+
+/**
+ * list_generation_jobs — list all generation jobs with optional filters.
+ */
+export async function handleListGenerationJobs(args: {
+  modality?: string;
+  status?: string;
+}): Promise<ToolResult> {
+  let jobs = Array.from(generationJobStore.values());
+
+  if (args.modality) {
+    const parse = GenerationModalitySchema.safeParse(args.modality);
+    if (!parse.success) {
+      return errorResult(
+        "VALIDATION_ERROR",
+        `modality must be one of: script, image, audio, video`,
+      );
+    }
+    jobs = jobs.filter((j) => j.modality === args.modality);
+  }
+
+  if (args.status) {
+    jobs = jobs.filter((j) => j.status === args.status);
+  }
+
+  jobs.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return okResult({ jobs });
+}
+
+/**
+ * approve_generated_assets — mark all outputs of a job as approved for use
+ * in projects and (in future) register them in the asset store.
+ */
+export async function handleApproveGeneratedAssets(args: {
+  jobId: string;
+}): Promise<ToolResult> {
+  const job = generationJobStore.get(args.jobId);
+  if (!job) {
+    return errorResult("JOB_NOT_FOUND", `Generation job "${args.jobId}" not found`);
+  }
+  if (job.status !== "completed") {
+    return errorResult(
+      "JOB_NOT_COMPLETED",
+      `Job "${args.jobId}" is not yet completed (status: ${job.status})`,
+    );
+  }
+  return okResult({ approved: true, jobId: job.id, outputs: job.outputs });
+}
+
+/**
+ * regenerate_scene_asset — regenerate the image or audio for a specific scene
+ * within an existing project.
+ */
+export async function handleRegenerateSceneAsset(args: {
+  projectId: string;
+  sceneIndex: number;
+  assetType: "image" | "audio";
+  prompt?: string;
+}): Promise<ToolResult> {
+  const { projectId, sceneIndex, assetType, prompt } = args;
+
+  const project = projectStore.get(projectId);
+  if (!project) {
+    return errorResult("PROJECT_NOT_FOUND", `Project "${projectId}" not found`);
+  }
+
+  const scenes = project.inputProps.scenes as Array<Record<string, unknown>> | undefined;
+  if (!scenes || !Array.isArray(scenes)) {
+    return errorResult("INVALID_PROJECT", "Project does not have a scenes array in inputProps");
+  }
+
+  if (sceneIndex < 0 || sceneIndex >= scenes.length) {
+    return errorResult(
+      "INVALID_SCENE_INDEX",
+      `Scene index ${sceneIndex} out of range (0-${scenes.length - 1})`,
+    );
+  }
+
+  const scene = scenes[sceneIndex];
+  const effectivePrompt =
+    prompt ??
+    (assetType === "image"
+      ? String(scene.imagePrompt ?? scene.body ?? "")
+      : String(scene.voiceoverText ?? scene.body ?? ""));
+
+  if (!effectivePrompt.trim()) {
+    return errorResult(
+      "VALIDATION_ERROR",
+      "No prompt available for regeneration. Provide an explicit prompt.",
+    );
+  }
+
+  try {
+    if (assetType === "image") {
+      const results = await runImagePipeline([{ body: effectivePrompt, imagePrompt: effectivePrompt }]);
+      const imageUrl = results[0]?.imageUrl ?? "";
+      scenes[sceneIndex] = { ...scene, imageUrl };
+      project.inputProps.scenes = scenes;
+      project.updatedAt = new Date().toISOString();
+      project.version++;
+      projectStore.set(projectId, project);
+      return okResult({ project, imageUrl, sceneIndex });
+    } else {
+      const result = await runAudioPipeline({ text: effectivePrompt });
+      scenes[sceneIndex] = { ...scene, audioUrl: result.url };
+      project.inputProps.scenes = scenes;
+      project.updatedAt = new Date().toISOString();
+      project.version++;
+      projectStore.set(projectId, project);
+      return okResult({ project, audioUrl: result.url, sceneIndex });
+    }
+  } catch (error) {
+    return errorResult(
+      "GENERATION_FAILED",
+      error instanceof Error ? error.message : String(error),
+    );
+  }
 }
