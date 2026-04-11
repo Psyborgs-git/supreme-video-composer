@@ -7,7 +7,6 @@ import {
   createSession,
   deleteSession,
   createOrg,
-  addOrgMember,
   getUserOrgs,
   getOrgBySlug,
 } from "@studio/database";
@@ -231,10 +230,11 @@ async function upsertAndCreateUser(
     // Auto-create a personal org for new users
     const orgs = await getUserOrgs(userId);
     if (orgs.length === 0) {
+      const displayName = profile.name ?? profile.email.split("@")[0];
       const slug = await generateUniqueSlug(profile.email.split("@")[0] ?? "user");
       await createOrg({
         slug,
-        name: `${profile.name ?? profile.email.split("@")[0]}'s Workspace`,
+        name: `${displayName}'s Workspace`,
         createdBy: userId,
       });
       // createOrg already calls addOrgMember with "owner" role internally
