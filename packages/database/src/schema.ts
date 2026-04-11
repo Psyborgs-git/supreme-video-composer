@@ -1,5 +1,5 @@
 import { sqliteTable, text, integer, primaryKey, unique } from "drizzle-orm/sqlite-core";
-import { sql } from "drizzle-orm";
+import { sql, relations } from "drizzle-orm";
 
 export const users = sqliteTable("users", {
   id: text("id").primaryKey(),
@@ -23,7 +23,7 @@ export const oauthAccounts = sqliteTable(
     refreshToken: text("refresh_token"),
     createdAt: text("created_at").default(sql`(datetime('now'))`),
   },
-  (t) => [unique().on(t.provider, t.providerUserId)],
+  (t) => [unique("oauth_provider_user_idx").on(t.provider, t.providerUserId)],
 );
 
 export const sessions = sqliteTable("sessions", {
@@ -178,3 +178,86 @@ export const usageEvents = sqliteTable("usage_events", {
   meta: text("meta").default("{}"),
   createdAt: text("created_at").default(sql`(datetime('now'))`),
 });
+
+// ─── Relations ────────────────────────────────────────────────────────────────
+
+export const usersRelations = relations(users, ({ many }) => ({
+  oauthAccounts: many(oauthAccounts),
+  sessions: many(sessions),
+  orgMembers: many(orgMembers),
+}));
+
+export const oauthAccountsRelations = relations(oauthAccounts, ({ one }) => ({
+  user: one(users, { fields: [oauthAccounts.userId], references: [users.id] }),
+}));
+
+export const sessionsRelations = relations(sessions, ({ one }) => ({
+  user: one(users, { fields: [sessions.userId], references: [users.id] }),
+}));
+
+export const organizationsRelations = relations(organizations, ({ many }) => ({
+  members: many(orgMembers),
+  invites: many(orgInvites),
+  projects: many(projects),
+  assets: many(assets),
+  renderJobs: many(renderJobs),
+  generationJobs: many(generationJobs),
+  automations: many(automations),
+  subscriptions: many(subscriptions),
+  creditLedger: many(creditLedger),
+  usageEvents: many(usageEvents),
+}));
+
+export const orgMembersRelations = relations(orgMembers, ({ one }) => ({
+  org: one(organizations, { fields: [orgMembers.orgId], references: [organizations.id] }),
+  user: one(users, { fields: [orgMembers.userId], references: [users.id] }),
+}));
+
+export const orgInvitesRelations = relations(orgInvites, ({ one }) => ({
+  org: one(organizations, { fields: [orgInvites.orgId], references: [organizations.id] }),
+}));
+
+export const projectsRelations = relations(projects, ({ one }) => ({
+  org: one(organizations, { fields: [projects.orgId], references: [organizations.id] }),
+  createdByUser: one(users, { fields: [projects.createdBy], references: [users.id] }),
+}));
+
+export const assetsRelations = relations(assets, ({ one }) => ({
+  org: one(organizations, { fields: [assets.orgId], references: [organizations.id] }),
+  uploadedByUser: one(users, { fields: [assets.uploadedBy], references: [users.id] }),
+}));
+
+export const renderJobsRelations = relations(renderJobs, ({ one }) => ({
+  org: one(organizations, { fields: [renderJobs.orgId], references: [organizations.id] }),
+  user: one(users, { fields: [renderJobs.userId], references: [users.id] }),
+  project: one(projects, { fields: [renderJobs.projectId], references: [projects.id] }),
+}));
+
+export const generationJobsRelations = relations(generationJobs, ({ one }) => ({
+  org: one(organizations, { fields: [generationJobs.orgId], references: [organizations.id] }),
+  user: one(users, { fields: [generationJobs.userId], references: [users.id] }),
+}));
+
+export const automationsRelations = relations(automations, ({ one, many }) => ({
+  org: one(organizations, { fields: [automations.orgId], references: [organizations.id] }),
+  createdByUser: one(users, { fields: [automations.createdBy], references: [users.id] }),
+  runs: many(automationRuns),
+}));
+
+export const automationRunsRelations = relations(automationRuns, ({ one }) => ({
+  automation: one(automations, { fields: [automationRuns.automationId], references: [automations.id] }),
+}));
+
+export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
+  org: one(organizations, { fields: [subscriptions.orgId], references: [organizations.id] }),
+}));
+
+export const creditLedgerRelations = relations(creditLedger, ({ one }) => ({
+  org: one(organizations, { fields: [creditLedger.orgId], references: [organizations.id] }),
+  user: one(users, { fields: [creditLedger.userId], references: [users.id] }),
+}));
+
+export const usageEventsRelations = relations(usageEvents, ({ one }) => ({
+  org: one(organizations, { fields: [usageEvents.orgId], references: [organizations.id] }),
+  user: one(users, { fields: [usageEvents.userId], references: [users.id] }),
+}));

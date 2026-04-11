@@ -19,13 +19,13 @@ export async function upsertUser(data: {
   id?: string;
   email: string;
   name?: string;
-  avatar_url?: string;
+  avatarUrl?: string;
 }) {
   const existing = await getUserByEmail(data.email);
   if (existing) {
     const [updated] = await getDb()
       .update(schema.users)
-      .set({ name: data.name, avatarUrl: data.avatar_url })
+      .set({ name: data.name, avatarUrl: data.avatarUrl })
       .where(eq(schema.users.email, data.email))
       .returning();
     return updated;
@@ -36,7 +36,7 @@ export async function upsertUser(data: {
       id: data.id ?? randomUUID(),
       email: data.email,
       name: data.name,
-      avatarUrl: data.avatar_url,
+      avatarUrl: data.avatarUrl,
     })
     .returning();
   return created;
@@ -77,20 +77,20 @@ export async function getOAuthAccount(provider: string, providerUserId: string) 
 
 export async function upsertOAuthAccount(data: {
   provider: string;
-  provider_user_id: string;
-  user_id: string;
-  access_token?: string;
-  refresh_token?: string;
+  providerUserId: string;
+  userId: string;
+  accessToken?: string;
+  refreshToken?: string;
 }) {
-  const existing = await getOAuthAccount(data.provider, data.provider_user_id);
+  const existing = await getOAuthAccount(data.provider, data.providerUserId);
   if (existing) {
     const [updated] = await getDb()
       .update(schema.oauthAccounts)
-      .set({ accessToken: data.access_token, refreshToken: data.refresh_token })
+      .set({ accessToken: data.accessToken, refreshToken: data.refreshToken })
       .where(
         and(
           eq(schema.oauthAccounts.provider, data.provider),
-          eq(schema.oauthAccounts.providerUserId, data.provider_user_id),
+          eq(schema.oauthAccounts.providerUserId, data.providerUserId),
         ),
       )
       .returning();
@@ -101,10 +101,10 @@ export async function upsertOAuthAccount(data: {
     .values({
       id: randomUUID(),
       provider: data.provider,
-      providerUserId: data.provider_user_id,
-      userId: data.user_id,
-      accessToken: data.access_token,
-      refreshToken: data.refresh_token,
+      providerUserId: data.providerUserId,
+      userId: data.userId,
+      accessToken: data.accessToken,
+      refreshToken: data.refreshToken,
     })
     .returning();
   return created;
@@ -140,15 +140,15 @@ export async function getOrgById(id: string) {
 
 export async function updateOrg(
   id: string,
-  data: Partial<{ name: string; plan: string; stripe_customer_id: string }>,
+  data: Partial<{ name: string; plan: string; stripeCustomerId: string }>,
 ) {
   const [updated] = await getDb()
     .update(schema.organizations)
     .set({
       ...(data.name !== undefined && { name: data.name }),
       ...(data.plan !== undefined && { plan: data.plan }),
-      ...(data.stripe_customer_id !== undefined && {
-        stripeCustomerId: data.stripe_customer_id,
+      ...(data.stripeCustomerId !== undefined && {
+        stripeCustomerId: data.stripeCustomerId,
       }),
     })
     .where(eq(schema.organizations.id, id))
@@ -167,7 +167,7 @@ export async function getUserOrgs(userId: string) {
   });
   return members
     .filter((m) => m.org != null)
-    .map((m) => ({ role: m.role, ...Object(m.org) }));
+    .map((m) => ({ role: m.role, ...(m.org as typeof schema.organizations.$inferSelect) }));
 }
 
 // ─── Org members ──────────────────────────────────────────────────────────────
