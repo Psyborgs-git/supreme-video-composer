@@ -509,3 +509,123 @@ export const GenerationJobSchema = z.object({
   completedAt: z.string().nullable(),
 });
 export type GenerationJob = z.infer<typeof GenerationJobSchema>;
+
+// ─── Auth & User ──────────────────────────────────────────────────
+
+export const OrgRoleSchema = z.enum(["owner", "admin", "member", "viewer"]);
+export type OrgRole = z.infer<typeof OrgRoleSchema>;
+
+export interface User {
+  id: string;
+  email: string;
+  name: string | null;
+  avatarUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrgMember {
+  orgId: string;
+  userId: string;
+  role: OrgRole;
+  user?: User;
+  invitedAt: string | null;
+  joinedAt: string | null;
+}
+
+export interface OrgInvite {
+  id: string;
+  orgId: string;
+  email: string;
+  role: OrgRole;
+  token: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
+// ─── Organisation ─────────────────────────────────────────────────
+
+export const PlanIdSchema = z.enum(["free", "pro", "team", "enterprise"]);
+export type PlanId = z.infer<typeof PlanIdSchema>;
+
+export interface Organization {
+  id: string;
+  slug: string;
+  name: string;
+  plan: PlanId;
+  stripeCustomerId: string | null;
+  createdAt: string;
+}
+
+// ─── Subscriptions ────────────────────────────────────────────────
+
+export interface Subscription {
+  id: string;
+  orgId: string;
+  stripeSubscriptionId: string | null;
+  plan: PlanId;
+  status: "active" | "past_due" | "canceled" | "trialing";
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ─── Credits ─────────────────────────────────────────────────────
+
+export interface CreditLedgerEntry {
+  id: string;
+  orgId: string;
+  userId: string | null;
+  delta: number;
+  reason: string;
+  referenceId: string | null;
+  referenceType: string | null;
+  createdAt: string;
+}
+
+export interface UsageEvent {
+  id: string;
+  orgId: string;
+  userId: string | null;
+  eventType: string;
+  resourceType: string | null;
+  resourceId: string | null;
+  meta: Record<string, unknown>;
+  createdAt: string;
+}
+
+// ─── Automations ──────────────────────────────────────────────────
+
+export interface Automation {
+  id: string;
+  orgId: string;
+  createdBy: string;
+  name: string;
+  cronExpr: string;
+  templateId: string;
+  inputProps: Record<string, unknown>;
+  enabled: boolean;
+  lastRunAt: string | null;
+  nextRunAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const AutomationRunStatusSchema = z.enum([
+  "pending",
+  "running",
+  "complete",
+  "error",
+]);
+export type AutomationRunStatus = z.infer<typeof AutomationRunStatusSchema>;
+
+export interface AutomationRun {
+  id: string;
+  automationId: string;
+  status: AutomationRunStatus;
+  outputUrl: string | null;
+  error: string | null;
+  ranAt: string | null;
+  creditsUsed: number;
+}

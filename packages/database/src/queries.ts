@@ -42,6 +42,21 @@ export async function upsertUser(data: {
   return created;
 }
 
+export async function updateUser(
+  id: string,
+  data: Partial<{ name: string; avatarUrl: string }>,
+) {
+  const [updated] = await getDb()
+    .update(schema.users)
+    .set({
+      ...(data.name !== undefined && { name: data.name }),
+      ...(data.avatarUrl !== undefined && { avatarUrl: data.avatarUrl }),
+    })
+    .where(eq(schema.users.id, id))
+    .returning();
+  return updated;
+}
+
 // ─── Sessions ─────────────────────────────────────────────────────────────────
 
 export async function createSession(

@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
+import { useAuthStore } from "../stores/authStore";
 
 type Theme = "light" | "dark";
 
@@ -13,6 +14,15 @@ export const Layout: React.FC = () => {
   const location = useLocation();
   const [theme, setTheme] = useState<Theme>(getInitialTheme);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [orgMenuOpen, setOrgMenuOpen] = useState(false);
+  const orgMenuRef = useRef<HTMLDivElement>(null);
+
+  const { user, orgs, currentOrg, switchOrg, logout, initialize } = useAuthStore();
+
+  // Initialize auth on mount
+  useEffect(() => {
+    initialize();
+  }, []);
 
   // Apply .dark class to <html> and persist
   useEffect(() => {
@@ -27,7 +37,19 @@ export const Layout: React.FC = () => {
   // Close mobile menu on route change
   useEffect(() => {
     setMobileMenuOpen(false);
+    setOrgMenuOpen(false);
   }, [location.pathname]);
+
+  // Close org menu on outside click
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (orgMenuRef.current && !orgMenuRef.current.contains(e.target as Node)) {
+        setOrgMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
 
@@ -36,6 +58,7 @@ export const Layout: React.FC = () => {
     { to: "/templates/new", label: "Create Template" },
     { to: "/projects", label: "Projects" },
     { to: "/assets", label: "Assets" },
+    { to: "/automations", label: "Automations" },
   ];
 
   const isActive = (to: string) =>
@@ -74,6 +97,85 @@ export const Layout: React.FC = () => {
 
           {/* Right controls */}
           <div className="flex items-center gap-2">
+            {/* Org switcher */}
+            {user && currentOrg && (
+              <div ref={orgMenuRef} className="relative">
+                <button
+                  onClick={() => setOrgMenuOpen((o) => !o)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
+                >
+                  <span className="max-w-28 truncate">{currentOrg.name}</span>
+                  <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {orgMenuOpen && (
+                  <div className="absolute right-0 mt-1 w-56 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl shadow-lg py-1 z-50">
+                    <p className="px-3 py-1.5 text-xs text-gray-400 dark:text-zinc-500 font-medium uppercase tracking-wide">Organisations</p>
+                    {orgs.map((org) => (
+                      <button
+                        key={org.id}
+                        onClick={() => { switchOrg(org.slug); setOrgMenuOpen(false); }}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors ${
+                          org.id === currentOrg.id ? "text-blue-600 dark:text-blue-400 font-medium" : "text-gray-700 dark:text-zinc-300"
+                        }`}
+                      >
+                        {org.name}
+                      </button>
+                    ))}
+                    <div className="border-t border-gray-100 dark:border-zinc-800 my-1" />
+                    <Link
+                      to="/orgs/new"
+                      className="block px-3 py-2 text-sm text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
+                      onClick={() => setOrgMenuOpen(false)}
+                    >
+                      + New organisation
+                    </Link>
+                    <div className="border-t border-gray-100 dark:border-zinc-800 my-1" />
+                    <Link
+                      to="/settings/profile"
+                      className="block px-3 py-2 text-sm text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
+                      onClick={() => setOrgMenuOpen(false)}
+                    >
+                      Profile settings
+                    </Link>
+                    <Link
+                      to="/settings/members"
+                      className="block px-3 py-2 text-sm text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
+                      onClick={() => setOrgMenuOpen(false)}
+                    >
+                      Team members
+                    </Link>
+                    <Link
+                      to="/settings/billing"
+                      className="block px-3 py-2 text-sm text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
+                      onClick={() => setOrgMenuOpen(false)}
+                    >
+                      Billing
+                    </Link>
+                    <div className="border-t border-gray-100 dark:border-zinc-800 my-1" />
+                    <button
+                      onClick={() => { logout(); setOrgMenuOpen(false); }}
+                      className="w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+                    >
+                      Sign out
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Login link (when unauthenticated) */}
+            {!user && (
+              <Link
+                to="/login"
+                className="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+              >
+                Sign in
+              </Link>
+            )}
+
             {/* Theme toggle */}
             <button
               onClick={toggleTheme}
