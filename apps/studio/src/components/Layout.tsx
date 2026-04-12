@@ -130,7 +130,7 @@ export const Layout: React.FC = () => {
                       className="block px-3 py-2 text-sm text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
                       onClick={() => setOrgMenuOpen(false)}
                     >
-                      + New organisation
+                      + New organization
                     </Link>
                     <div className="border-t border-gray-100 dark:border-zinc-800 my-1" />
                     <Link

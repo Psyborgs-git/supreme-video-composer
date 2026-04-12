@@ -52,7 +52,12 @@ export const useAuthStore = create<AuthState>()(
             set({ user: null, orgs: [], currentOrg: null, isInitialized: true, isLoading: false });
             return;
           }
-          const { user } = await res.json() as { user: AuthUser };
+          const data = await res.json() as { user?: AuthUser };
+          if (!data.user) {
+            set({ user: null, orgs: [], currentOrg: null, isInitialized: true, isLoading: false });
+            return;
+          }
+          const { user } = data;
 
           const orgsRes = await fetch("/api/users/me/orgs");
           const { orgs } = orgsRes.ok

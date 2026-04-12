@@ -47,7 +47,7 @@ export const NewOrg: React.FC = () => {
   return (
     <div className="min-h-screen bg-white dark:bg-zinc-950 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-zinc-100 mb-2">Create an organisation</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-zinc-100 mb-2">Create an organization</h1>
         <p className="text-sm text-gray-500 dark:text-zinc-400 mb-6">Organisations group your projects, assets, and team members.</p>
 
         {error && (
@@ -90,7 +90,7 @@ export const NewOrg: React.FC = () => {
             disabled={isLoading || !name.trim() || !slug.trim()}
             className="w-full px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium transition-colors"
           >
-            {isLoading ? "Creating…" : "Create organisation"}
+            {isLoading ? "Creating…" : "Create organization"}
           </button>
         </form>
       </div>

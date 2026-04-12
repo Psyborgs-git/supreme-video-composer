@@ -62,10 +62,9 @@ import { usersRouter } from "./api/users";
 import { orgsRouter } from "./api/orgs";
 import { billingRouter, stripeWebhookRouter } from "./api/billing";
 import { automationsRouter } from "./api/automations";
+import { generateId } from "./utils";
 
-export function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
+export { generateId };
 
 /**
  * Build the Hono API application.

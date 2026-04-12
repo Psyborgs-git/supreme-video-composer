@@ -14,13 +14,19 @@
 import cron, { type ScheduledTask } from "node-cron";
 import {
   getOrgAutomations,
+  getAutomationById,
   createAutomationRun,
   updateAutomationRun,
   updateAutomation,
   logUsageEvent,
+  getDb,
+  automations as automationsTable,
 } from "@studio/database";
 import { hasEnoughCredits, deductCredits, CREDIT_COSTS } from "@studio/billing";
+import { getTemplate } from "@studio/template-registry";
+import { eq } from "drizzle-orm";
 import type { Automation } from "@studio/shared-types";
+import { generateId } from "../utils";
 
 type RenderQueueLike = {
   enqueue(job: unknown): Promise<unknown>;
@@ -89,7 +95,6 @@ class AutomationScheduler {
     const scheduled = this.tasks.get(automationId);
     if (!scheduled) {
       // Try loading directly from DB
-      const { getAutomationById } = await import("@studio/database");
       const a = await getAutomationById(automationId);
       if (!a) throw new Error("Automation not found");
       return this.runAutomation(toAutomation(a));
@@ -134,8 +139,6 @@ class AutomationScheduler {
 
       // Enqueue render job if queue is available
       if (this.renderQueue) {
-        const { generateId } = await import("../api");
-        const { getTemplate } = await import("@studio/template-registry");
         const template = getTemplate(automation.templateId);
         const compositionId = template?.manifest.compositionId ?? automation.templateId;
 
@@ -191,15 +194,11 @@ class AutomationScheduler {
 }
 
 async function getAllEnabledAutomations(): Promise<Automation[]> {
-  // We need to get ALL automations across all orgs.
-  // This is a simplification — in a large app you'd paginate.
-  const { getDb } = await import("@studio/database");
-  const { automations } = await import("@studio/database");
-  const { eq } = await import("drizzle-orm");
+  // Get all enabled automations across all orgs.
   const rows = await getDb()
     .select()
-    .from(automations)
-    .where(eq(automations.enabled, 1));
+    .from(automationsTable)
+    .where(eq(automationsTable.enabled, 1));
   return rows.map(toAutomation);
 }
 
