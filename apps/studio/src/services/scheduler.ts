@@ -11,7 +11,7 @@
  *
  * The scheduler can hot-reload individual automations without a server restart.
  */
-import cron from "node-cron";
+import cron, { type ScheduledTask } from "node-cron";
 import {
   getOrgAutomations,
   createAutomationRun,
@@ -28,7 +28,7 @@ type RenderQueueLike = {
 
 interface ScheduledAutomation {
   automation: Automation;
-  task: cron.ScheduledTask;
+  task: ScheduledTask;
 }
 
 class AutomationScheduler {

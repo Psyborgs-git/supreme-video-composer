@@ -7,7 +7,6 @@ import {
   getOrgBySlug,
   getOrgSubscription,
   updateOrg,
-  logUsageEvent,
 } from "@studio/database";
 import {
   getCreditBalance,
@@ -18,7 +17,7 @@ import {
   handleInvoicePaid,
   PLANS,
 } from "@studio/billing";
-import type { Stripe } from "@studio/billing";
+import type Stripe from "stripe";
 
 export const billingRouter = new Hono();
 export const stripeWebhookRouter = new Hono();
@@ -133,13 +132,12 @@ stripeWebhookRouter.post("/webhook", async (c) => {
     switch (event.type) {
       case "invoice.paid": {
         const invoice = event.data.object as Stripe.Invoice;
-        const orgId = (invoice.metadata as Record<string, string>)?.orgId ??
-          (invoice.customer_object as Record<string, unknown> | null)?.metadata?.orgId;
+        const orgId = (invoice.metadata as Record<string, string>)?.orgId;
         if (!orgId) break;
 
-        const subId = typeof invoice.subscription === "string"
-          ? invoice.subscription
-          : (invoice.subscription as { id: string } | null)?.id ?? "";
+        // In Stripe API v2026, subscription is accessed via parent.subscription_details
+        const parentSub = (invoice.parent as Stripe.Invoice.Parent | null)?.subscription_details?.subscription;
+        const subId = typeof parentSub === "string" ? parentSub : (parentSub as { id: string } | null | undefined)?.id ?? "";
 
         await handleInvoicePaid({
           orgId: String(orgId),
@@ -156,13 +154,16 @@ stripeWebhookRouter.post("/webhook", async (c) => {
         const orgId = (sub.metadata as Record<string, string>)?.orgId;
         if (!orgId) break;
 
+        // current_period_end moved to items in v2026; fall back to billing_cycle_anchor
+        const periodEnd = (sub as unknown as Record<string, unknown>).current_period_end as number | undefined;
+
         const { upsertSubscription } = await import("@studio/database");
         await upsertSubscription({
           orgId: String(orgId),
           stripeSubscriptionId: sub.id,
           plan: (sub.metadata as Record<string, string>)?.plan ?? "free",
           status: sub.status as string,
-          currentPeriodEnd: new Date(sub.current_period_end * 1000).toISOString(),
+          currentPeriodEnd: new Date((periodEnd ?? sub.billing_cycle_anchor) * 1000).toISOString(),
         });
         break;
       }

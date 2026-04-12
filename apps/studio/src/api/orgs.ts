@@ -61,12 +61,12 @@ orgsRouter.patch("/:orgSlug", requireAuth, requireOrgAdmin, async (c) => {
   const org = await getOrgBySlug(c.req.param("orgSlug"));
   if (!org) return c.json({ error: "Organization not found" }, 404);
 
-  const body = await c.req.json<{ name?: string }>().catch(() => ({}));
-  if (!body.name?.trim()) {
+  const raw = await c.req.json().catch(() => null) as { name?: string } | null;
+  if (!raw?.name?.trim()) {
     return c.json({ error: "name is required" }, 400);
   }
 
-  const updated = await updateOrg(org.id, { name: body.name.trim() });
+  const updated = await updateOrg(org.id, { name: raw.name.trim() });
   return c.json({ org: updated });
 });
 
@@ -121,7 +121,7 @@ orgsRouter.post("/:orgSlug/members/accept", requireAuth, async (c) => {
     return c.json({ error: "Invite has expired" }, 410);
   }
 
-  await addOrgMember(invite.orgId, user.id, invite.role);
+  await addOrgMember(invite.orgId ?? "", user.id, invite.role);
   await deleteInvite(invite.id);
 
   return c.json({ success: true, orgId: invite.orgId });

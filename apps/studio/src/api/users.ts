@@ -3,7 +3,7 @@
  */
 import { Hono } from "hono";
 import { requireAuth } from "@studio/auth";
-import { getUserOrgs, updateOrg } from "@studio/database";
+import { getUserOrgs, updateUser } from "@studio/database";
 import type { AuthUser } from "@studio/auth";
 
 declare module "hono" {
@@ -23,12 +23,12 @@ usersRouter.get("/me", requireAuth, (c) => {
 // PATCH /api/users/me — update display name or avatar
 usersRouter.patch("/me", requireAuth, async (c) => {
   const user = c.get("user");
-  const body = await c.req.json<{ name?: string; avatarUrl?: string }>().catch(() => ({}));
+  const raw = await c.req.json().catch(() => null) as { name?: string; avatarUrl?: string } | null;
+  if (!raw) return c.json({ error: "Invalid JSON body" }, 400);
 
-  const { updateUser } = await import("@studio/database");
   const updated = await updateUser(user.id, {
-    name: body.name,
-    avatarUrl: body.avatarUrl,
+    name: raw.name,
+    avatarUrl: raw.avatarUrl,
   });
 
   return c.json({ user: updated });

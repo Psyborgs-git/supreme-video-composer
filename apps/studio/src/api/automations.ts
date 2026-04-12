@@ -171,17 +171,17 @@ function normalizeAutomation(a: {
 }) {
   return {
     id: a.id,
-    orgId: a.orgId,
-    createdBy: a.createdBy,
+    orgId: a.orgId ?? "",
+    createdBy: a.createdBy ?? "",
     name: a.name,
     cronExpr: a.cronExpr,
     templateId: a.templateId,
-    inputProps: safeJson(a.inputProps, {}),
+    inputProps: safeJson(a.inputProps, {}) as Record<string, unknown>,
     enabled: a.enabled === 1 || a.enabled === null,
     lastRunAt: a.lastRunAt,
     nextRunAt: a.nextRunAt,
-    createdAt: a.createdAt,
-    updatedAt: a.updatedAt,
+    createdAt: a.createdAt ?? new Date().toISOString(),
+    updatedAt: a.updatedAt ?? new Date().toISOString(),
   };
 }
 
