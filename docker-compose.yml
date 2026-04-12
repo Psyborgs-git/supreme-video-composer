@@ -8,12 +8,32 @@ x-data-volumes: &data-volumes
   - ./data/exports:/data/exports
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: studio
+      POSTGRES_USER: studio
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-studio_dev}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${HOST_POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U studio -d studio"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   studio:
     build:
       <<: *build
       target: studio-runner
     image: remotion-studio-studio:local
     init: true
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
       - "${HOST_STUDIO_PORT:-3000}:3000"
     volumes: *data-volumes
@@ -23,6 +43,20 @@ services:
       - ASSETS_DIR=/data/assets
       - PROJECTS_DIR=/data/projects
       - EXPORTS_DIR=/data/exports
+      # Database
+      - DATABASE_URL=postgresql://studio:${POSTGRES_PASSWORD:-studio_dev}@postgres:5432/studio
+      # Auth
+      - SESSION_SECRET=${SESSION_SECRET:-change-me-in-production-32chars}
+      - APP_URL=${APP_URL:-http://localhost:3000}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      # Billing
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
+      - STRIPE_PRICE_ID_PRO=${STRIPE_PRICE_ID_PRO:-}
+      - STRIPE_PRICE_ID_TEAM=${STRIPE_PRICE_ID_TEAM:-}
     healthcheck:
       test: ["CMD-SHELL", "curl --fail http://127.0.0.1:3000/api/templates > /dev/null || exit 1"]
       interval: 15s
@@ -31,6 +65,7 @@ services:
       start_period: 20s
     restart: unless-stopped
     shm_size: '2gb'
+
   mcp:
     build:
       <<: *build
@@ -49,6 +84,7 @@ services:
       - MCP_PORT=9090
       - STUDIO_API_BASE_URL=http://studio:3000
       - STUDIO_PUBLIC_URL=http://localhost:${HOST_STUDIO_PORT:-3000}
+      - STUDIO_API_TOKEN=${STUDIO_API_TOKEN:-}
       - ASSETS_DIR=/data/assets
       - PROJECTS_DIR=/data/projects
       - EXPORTS_DIR=/data/exports
@@ -59,3 +95,6 @@ services:
       retries: 5
       start_period: 10s
     restart: unless-stopped
+
+volumes:
+  postgres_data:

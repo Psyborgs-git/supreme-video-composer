@@ -12,7 +12,7 @@
     "mcp:http": "npm run --workspace @studio/mcp-server start:http",
     "mcp:stdio": "npm run --workspace @studio/mcp-server start:stdio",
     "smoke:mcp:http": "npm run --workspace @studio/mcp-server smoke:http",
-    "build": "npm run --workspace @studio/shared-types build && npm run --workspace @studio/renderer build && npm run --workspace @studio/mcp-server build && npm run --workspace @studio/app build",
+    "build": "npm run --workspace @studio/shared-types build && npm run --workspace @studio/database build && npm run --workspace @studio/auth build && npm run --workspace @studio/billing build && npm run --workspace @studio/renderer build && npm run --workspace @studio/mcp-server build && npm run --workspace @studio/app build",
     "build:types": "npm run --workspace @studio/shared-types build",
     "build:renderer": "npm run --workspace @studio/renderer build",
     "build:mcp": "npm run --workspace @studio/mcp-server build",

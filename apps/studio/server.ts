@@ -28,6 +28,7 @@ import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { RenderQueue, executeRender } from "@studio/renderer";
 import { createApp } from "./src/api";
+import { automationScheduler } from "./src/services/scheduler";
 import type { Context } from "hono";
 
 // ─── Paths ────────────────────────────────────────────────────────────────────
@@ -73,6 +74,25 @@ const corsOrigin = isProduction ? "*" : "http://localhost:3000";
 const { app } = createApp(renderQueue, corsOrigin, {
   assetsDir: ASSETS_DIR,
   projectsDir: PROJECTS_DIR,
+});
+
+// ─── Database & Scheduler ─────────────────────────────────────────────────────
+
+// Initialize DB (creates tables if needed via migrations or push)
+if (process.env.DATABASE_URL) {
+  try {
+    const { getDb } = await import("@studio/database");
+    getDb(); // Trigger lazy initialization
+    console.log("[studio-api] database connected");
+  } catch (err) {
+    console.error("[studio-api] database connection failed:", err);
+  }
+}
+
+// Wire render queue into scheduler and load saved automations
+automationScheduler.setRenderQueue(renderQueue);
+automationScheduler.loadFromDb().catch((err) => {
+  console.warn("[studio-api] automation scheduler load skipped (no DB?):", (err as Error).message);
 });
 
 // ─── Audio proxy ──────────────────────────────────────────────────────────────
@@ -176,6 +196,7 @@ const server = serve({ fetch: app.fetch, port: PORT, hostname: HOST }, () => {
 
 function gracefulShutdown(signal: string) {
   console.log(`\n[studio-api] received ${signal}, shutting down gracefully...`);
+  automationScheduler.stopAll();
   server.close(() => {
     console.log("[studio-api] server closed");
     process.exit(0);

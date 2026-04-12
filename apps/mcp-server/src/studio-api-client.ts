@@ -48,9 +48,12 @@ export class StudioApiError extends Error {
 
 export class StudioApiClient {
   private readonly baseUrl: string;
+  private readonly apiToken?: string;
 
-  constructor(baseUrl: string) {
+  constructor(baseUrl: string, apiToken?: string) {
     this.baseUrl = baseUrl.replace(/\/+$/, "");
+    // Support STUDIO_API_TOKEN env var for m2m access
+    this.apiToken = apiToken ?? process.env.STUDIO_API_TOKEN;
   }
 
   async createProject(input: CreateProjectInput): Promise<Project> {
@@ -143,14 +146,34 @@ export class StudioApiClient {
     });
   }
 
+  // ─── Billing / Credits ────────────────────────────────────────────────────
+
+  async getCreditBalance(orgSlug: string): Promise<{ plan: string; creditBalance: number }> {
+    return this.request<{ plan: string; creditBalance: number }>(`/api/orgs/${orgSlug}/billing`);
+  }
+
+  // ─── Automations ──────────────────────────────────────────────────────────
+
+  async listAutomations(orgSlug: string): Promise<{ automations: unknown[] }> {
+    return this.request<{ automations: unknown[] }>(`/api/orgs/${orgSlug}/automations`);
+  }
+
+  async triggerAutomation(orgSlug: string, automationId: string): Promise<{ run: unknown }> {
+    return this.request<{ run: unknown }>(`/api/orgs/${orgSlug}/automations/${automationId}/run`, {
+      method: "POST",
+    });
+  }
+
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
+    const headers: Record<string, string> = {
+      Accept: "application/json",
+      ...(init.body ? { "Content-Type": "application/json" } : {}),
+      ...(this.apiToken ? { "X-Api-Token": this.apiToken } : {}),
+    };
+
     const response = await fetch(`${this.baseUrl}${path}`, {
       ...init,
-      headers: {
-        Accept: "application/json",
-        ...(init.body ? { "Content-Type": "application/json" } : {}),
-        ...init.headers,
-      },
+      headers: { ...headers, ...(init.headers as Record<string, string> | undefined) },
     });
 
     const text = await response.text();

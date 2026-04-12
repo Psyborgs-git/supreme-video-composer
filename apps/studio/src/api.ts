@@ -56,9 +56,15 @@ import {
   runFullGenerationPipeline,
 } from "@studio/ai-generation";
 
-export function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
+// ─── New auth / org / billing / automation routes ─────────────────────────────
+import { authRouter } from "@studio/auth";
+import { usersRouter } from "./api/users";
+import { orgsRouter } from "./api/orgs";
+import { billingRouter, stripeWebhookRouter } from "./api/billing";
+import { automationsRouter } from "./api/automations";
+import { generateId } from "./utils";
+
+export { generateId };
 
 /**
  * Build the Hono API application.
@@ -90,6 +96,14 @@ export function createApp(
 
   const app = new Hono();
   app.use("*", cors({ origin: corsOrigin }));
+
+  // ─── Auth + Org + Billing + Automation routes ──────────────────────────────
+  app.route("/auth", authRouter);
+  app.route("/api/users", usersRouter);
+  app.route("/api/orgs", orgsRouter);
+  app.route("/api/orgs", billingRouter);
+  app.route("/api/orgs", automationsRouter);
+  app.route("/api/stripe", stripeWebhookRouter);
 
   // ─── Templates ────────────────────────────────────────────────────────────
 
