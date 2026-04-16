@@ -57,6 +57,56 @@ export async function updateUser(
   return updated;
 }
 
+export async function createEmailUser(data: {
+  email: string;
+  passwordHash: string;
+  name?: string;
+}) {
+  const [created] = await getDb()
+    .insert(schema.users)
+    .values({
+      id: randomUUID(),
+      email: data.email,
+      passwordHash: data.passwordHash,
+      name: data.name,
+      emailVerified: 0,
+    })
+    .returning();
+  return created;
+}
+
+export async function getUserByEmailWithPassword(email: string) {
+  return getDb().query.users.findFirst({
+    where: eq(schema.users.email, email),
+    columns: {
+      id: true,
+      email: true,
+      name: true,
+      avatarUrl: true,
+      passwordHash: true,
+      emailVerified: true,
+    },
+  });
+}
+
+export async function updateUserPassword(id: string, passwordHash: string) {
+  const [updated] = await getDb()
+    .update(schema.users)
+    .set({ passwordHash })
+    .where(eq(schema.users.id, id))
+    .returning();
+  return updated;
+}
+
+export async function verifyUserEmail(id: string) {
+  const [updated] = await getDb()
+    .update(schema.users)
+    .set({ emailVerified: 1 })
+    .where(eq(schema.users.id, id))
+    .returning();
+  return updated;
+}
+
 // ─── Sessions ─────────────────────────────────────────────────────────────────
 
 export async function createSession(

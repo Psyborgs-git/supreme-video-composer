@@ -1,0 +1,35 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background gradient for visual depth -->
+  <defs>
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2563eb;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1d4ed8;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+
+  <!-- Main circle background -->
+  <circle cx="100" cy="100" r="95" fill="url(#logoGradient)" filter="url(#shadow)"/>
+
+  <!-- Play button (media creation) -->
+  <polygon points="75,65 75,135 130,100" fill="white" opacity="0.95"/>
+
+  <!-- Code brackets (software/creation) -->
+  <!-- Left bracket -->
+  <path d="M 45 70 L 55 60 L 55 75 M 55 60 L 45 70 L 55 80 L 55 75"
+        stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>
+
+  <!-- Right bracket -->
+  <path d="M 155 70 L 145 60 L 145 75 M 145 60 L 155 70 L 145 80 L 145 75"
+        stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>
+
+  <!-- Film reel accent (top) -->
+  <circle cx="100" cy="40" r="6" fill="white" opacity="0.9"/>
+  <circle cx="100" cy="40" r="3" fill="#2563eb" opacity="0.8"/>
+
+  <!-- Subtle dots for motion effect -->
+  <circle cx="70" cy="120" r="2.5" fill="white" opacity="0.6"/>
+  <circle cx="130" cy="120" r="2.5" fill="white" opacity="0.6"/>
+</svg>

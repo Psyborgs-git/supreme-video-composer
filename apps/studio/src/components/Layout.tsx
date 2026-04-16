@@ -80,10 +80,8 @@ export const Layout: React.FC = () => {
         <div className="px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 shrink-0">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-sm font-bold text-white">
-              M
-            </div>
-            <span className="text-base sm:text-lg font-semibold hidden xs:block">Media Studio</span>
+            <img src="/logo.svg" alt="Remotion Studio" className="w-8 h-8" />
+            <span className="text-base sm:text-lg font-semibold hidden xs:block">Remotion Studio</span>
           </Link>
 
           {/* Desktop nav */}
