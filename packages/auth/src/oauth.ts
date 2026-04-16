@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
+import bcrypt from "bcryptjs";
 import {
   upsertUser,
   upsertOAuthAccount,
@@ -9,6 +10,9 @@ import {
   createOrg,
   getUserOrgs,
   getOrgBySlug,
+  createEmailUser,
+  getUserByEmailWithPassword,
+  getUserByEmail,
 } from "@studio/database";
 import { randomUUID } from "node:crypto";
 
@@ -180,6 +184,119 @@ authRouter.get("/google/callback", async (c) => {
   } catch (err) {
     console.error("[auth/google] callback error:", err);
     return c.redirect(`${config.appUrl}/login?error=server_error`);
+  }
+});
+
+// ─── Email/Password Auth ──────────────────────────────────────────────────────
+
+authRouter.post("/register", async (c) => {
+  try {
+    const body = await c.req.json() as {
+      email?: string;
+      password?: string;
+      name?: string;
+    };
+
+    const email = body.email?.trim().toLowerCase();
+    const password = body.password;
+    const name = body.name?.trim();
+
+    if (!email || !password) {
+      return c.json({ error: "Email and password are required" }, 400);
+    }
+
+    if (password.length < 8) {
+      return c.json({ error: "Password must be at least 8 characters" }, 400);
+    }
+
+    const existing = await getUserByEmail(email);
+    if (existing) {
+      return c.json({ error: "Email already registered" }, 400);
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const user = await createEmailUser({
+      email,
+      passwordHash,
+      name,
+    });
+
+    const session = await createSession(user.id);
+    setCookie(c, COOKIE_NAME, session.id, {
+      httpOnly: true,
+      maxAge: COOKIE_MAX_AGE,
+      sameSite: "Lax",
+      path: "/",
+    });
+
+    const orgs = await getUserOrgs(user.id);
+    if (orgs.length === 0) {
+      const displayName = name ?? email.split("@")[0];
+      const slug = await generateUniqueSlug(email.split("@")[0] ?? "user");
+      await createOrg({
+        slug,
+        name: `${displayName}'s Workspace`,
+        createdBy: user.id,
+      });
+    }
+
+    return c.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatarUrl: user.avatarUrl,
+      },
+    });
+  } catch (err) {
+    console.error("[auth/register] error:", err);
+    return c.json({ error: "An unexpected error occurred" }, 500);
+  }
+});
+
+authRouter.post("/login", async (c) => {
+  try {
+    const body = await c.req.json() as {
+      email?: string;
+      password?: string;
+    };
+
+    const email = body.email?.trim().toLowerCase();
+    const password = body.password;
+
+    if (!email || !password) {
+      return c.json({ error: "Email and password are required" }, 400);
+    }
+
+    const user = await getUserByEmailWithPassword(email);
+    if (!user || !user.passwordHash) {
+      return c.json({ error: "Invalid email or password" }, 401);
+    }
+
+    const isValid = await bcrypt.compare(password, user.passwordHash);
+    if (!isValid) {
+      return c.json({ error: "Invalid email or password" }, 401);
+    }
+
+    const session = await createSession(user.id);
+    setCookie(c, COOKIE_NAME, session.id, {
+      httpOnly: true,
+      maxAge: COOKIE_MAX_AGE,
+      sameSite: "Lax",
+      path: "/",
+    });
+
+    return c.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatarUrl: user.avatarUrl,
+      },
+    });
+  } catch (err) {
+    console.error("[auth/login] error:", err);
+    return c.json({ error: "An unexpected error occurred" }, 500);
   }
 });
 
