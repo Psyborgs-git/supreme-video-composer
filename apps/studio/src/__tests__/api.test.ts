@@ -1146,3 +1146,41 @@ describe("POST /api/generation/:jobId/cancel — cancel generation job", () => {
     expect(res.status).toBe(404);
   });
 });
+
+// ─── Generation modality dispatch ─────────────────────────────────────────────
+
+describe("POST /api/generation — modality dispatch", () => {
+  it.each(["script", "image", "audio", "video"] as const)(
+    "accepts modality '%s' and returns 202",
+    async (modality) => {
+      const { app } = createApp(new RenderQueue());
+
+      const res = await app.request("/api/generation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ modality, prompt: `Test ${modality} generation` }),
+      });
+
+      expect(res.status).toBe(202);
+      const job = await res.json() as { id: string; status: string; modality: string };
+      expect(job.status).toBe("queued");
+      expect(job.modality).toBe(modality);
+    },
+  );
+
+  it("accepts 'script' as the default modality (omit field)", async () => {
+    const { app } = createApp(new RenderQueue());
+
+    const res = await app.request("/api/generation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: "Create a video" }),
+    });
+
+    expect(res.status).toBe(202);
+    const job = await res.json() as { modality: string };
+    // default modality is 'script'
+    expect(job.modality).toBe("script");
+  });
+});
+
