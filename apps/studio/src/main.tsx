@@ -11,6 +11,7 @@ import { TemplateCreator } from "./pages/TemplateCreator";
 import { Login } from "./pages/Login";
 import { NewOrg } from "./pages/NewOrg";
 import { Automations } from "./pages/Automations";
+import { AutomationDetail } from "./pages/AutomationDetail";
 import { BillingSettings } from "./pages/settings/BillingSettings";
 import { MembersSettings } from "./pages/settings/MembersSettings";
 import { ProfileSettings } from "./pages/settings/ProfileSettings";
@@ -42,6 +43,7 @@ createRoot(document.getElementById("root")!).render(
             <Route path="/projects" element={<Projects />} />
             <Route path="/assets" element={<Assets />} />
             <Route path="/automations" element={<Automations />} />
+            <Route path="/automations/:id" element={<AutomationDetail />} />
             <Route path="/orgs/new" element={<NewOrg />} />
             <Route path="/settings/profile" element={<ProfileSettings />} />
             <Route path="/settings/members" element={<MembersSettings />} />

@@ -20,6 +20,14 @@
 import type { ProviderConfig } from "@studio/shared-types";
 import { MockAudioProvider, MockImageProvider, MockTextProvider, MockVideoProvider } from "./mock.js";
 import { OpenAIAudioProvider, OpenAIImageProvider, OpenAITextProvider } from "./openai.js";
+import { GoogleVertexTextProvider, GoogleVertexImageProvider } from "./google-vertex.js";
+import { GeminiTextProvider } from "./gemini.js";
+import { HiggsFieldVideoProvider } from "./higgsfield.js";
+import { RunwayVideoProvider } from "./runway.js";
+import { LumaVideoProvider } from "./luma.js";
+import { SynthesiaVideoProvider } from "./synthesia.js";
+import { AWSImageProvider, AWSVideoProvider } from "./aws.js";
+import { ElevenLabsAudioProvider } from "./elevenlabs.js";
 import type {
   AudioProviderAdapter,
   ImageProviderAdapter,
@@ -41,6 +49,10 @@ export function createTextProvider(override?: ProviderConfig): TextProviderAdapt
   switch (name) {
     case "openai":
       return new OpenAITextProvider(model || "gpt-4o-mini");
+    case "google-vertex":
+      return new GoogleVertexTextProvider(model || "gemini-1.5-pro");
+    case "gemini":
+      return new GeminiTextProvider(model || "gemini-1.5-flash");
     case "mock":
     default:
       return new MockTextProvider();
@@ -56,6 +68,10 @@ export function createImageProvider(override?: ProviderConfig): ImageProviderAda
   switch (name) {
     case "openai":
       return new OpenAIImageProvider(model || "dall-e-3");
+    case "google-vertex":
+      return new GoogleVertexImageProvider(model || "imagegeneration@006");
+    case "aws":
+      return new AWSImageProvider(model || "amazon.titan-image-generator-v2:0");
     case "mock":
     default:
       return new MockImageProvider();
@@ -71,6 +87,11 @@ export function createAudioProvider(override?: ProviderConfig): AudioProviderAda
   switch (name) {
     case "openai":
       return new OpenAIAudioProvider(model || "tts-1");
+    case "elevenlabs":
+      return new ElevenLabsAudioProvider(
+        override?.options?.voiceId as string | undefined,
+        model || "eleven_multilingual_v2",
+      );
     case "mock":
     default:
       return new MockAudioProvider();
@@ -83,6 +104,19 @@ export function createVideoProvider(override?: ProviderConfig): VideoProviderAda
   const name = (override?.provider ?? envStr("AI_VIDEO_PROVIDER", "mock")).toLowerCase();
 
   switch (name) {
+    case "higgsfield":
+      return new HiggsFieldVideoProvider();
+    case "runway":
+      return new RunwayVideoProvider();
+    case "luma":
+      return new LumaVideoProvider();
+    case "synthesia":
+      return new SynthesiaVideoProvider(
+        override?.options?.avatarId as string | undefined,
+        override?.options?.voiceId as string | undefined,
+      );
+    case "aws":
+      return new AWSVideoProvider(model || "amazon.nova-reel-v1:0");
     case "mock":
     default:
       return new MockVideoProvider();

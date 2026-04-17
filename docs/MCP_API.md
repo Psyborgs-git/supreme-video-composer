@@ -843,3 +843,72 @@ generate_project_from_prompt({
 3. For rate limits: wait and retry with the same params
 4. Use `regenerate_scene_asset` to re-roll one scene without restarting the full pipeline
 
+
+---
+
+## Automation Workflow Tools
+
+The following REST endpoints (accessible from MCP tools or direct API calls) power the no-code workflow builder.
+
+### Workflow Step Management
+
+#### `GET /api/orgs/:orgSlug/automations/:id/steps`
+Returns all workflow steps for the automation in order.
+
+#### `POST /api/orgs/:orgSlug/automations/:id/steps`
+Create a new workflow step.
+```json
+{ "type": "generate_text", "order": 0, "promptTemplate": "{{topic}} video script", "provider": "gemini", "model": "gemini-1.5-flash", "outputSlotKey": "script" }
+```
+
+#### `PATCH /api/orgs/:orgSlug/automations/:id/steps/:stepId`
+Update step fields (promptTemplate, provider, model, outputSlotKey, conditionExpr, inputSlotBindings).
+
+#### `DELETE /api/orgs/:orgSlug/automations/:id/steps/:stepId`
+Delete a step.
+
+#### `POST /api/orgs/:orgSlug/automations/:id/steps/reorder`
+Reorder steps by providing an `orderedIds` array of step IDs.
+
+### Approval Policy
+
+#### `GET /api/orgs/:orgSlug/automations/:id/policy`
+Returns the current approval policy.
+
+#### `PUT /api/orgs/:orgSlug/automations/:id/policy`
+Update the approval policy.
+```json
+{ "mode": "require_approval", "approverRole": "admin", "timeoutMinutes": 60, "onTimeout": "pause" }
+```
+
+### Run History
+
+#### `GET /api/orgs/:orgSlug/automations/:id/runs`
+Returns paginated list of automation runs with step-level status detail.
+Query params: `?page=1&limit=20`
+
+#### `GET /api/orgs/:orgSlug/automations/:id/runs/:runId`
+Full run detail: steps, outputs, credits used, approval status.
+
+### Approval Actions
+
+#### `POST /api/orgs/:orgSlug/automations/:id/runs/:runId/approve`
+Approve a pending run. Requester must have role ≥ `approverRole` from policy.
+
+#### `POST /api/orgs/:orgSlug/automations/:id/runs/:runId/reject`
+Reject a pending run. Same role requirement.
+
+---
+
+## Provider Selection in Generation Tools
+
+When calling `generate_video_assets`, `generate_project_from_prompt`, or `POST /api/generation`, you can specify a preferred provider via environment variables:
+
+| Modality | Env variable | Supported values |
+|---|---|---|
+| Text/Script | `AI_TEXT_PROVIDER` | `openai`, `google-vertex`, `gemini`, `mock` |
+| Image | `AI_IMAGE_PROVIDER` | `openai`, `google-vertex`, `aws`, `mock` |
+| Audio | `AI_AUDIO_PROVIDER` | `openai`, `elevenlabs`, `mock` |
+| Video | `AI_VIDEO_PROVIDER` | `higgsfield`, `runway`, `luma`, `synthesia`, `aws`, `mock` |
+
+The `PROVIDER_CAPABILITY_MAP` in `packages/shared-types` documents available models, modalities, async mode, and approximate credit cost for each provider — use it to build provider-picker UI without importing server-only code.

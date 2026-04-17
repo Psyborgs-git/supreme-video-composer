@@ -10,6 +10,20 @@ interface Automation {
   enabled: boolean;
   lastRunAt: string | null;
   nextRunAt: string | null;
+  pendingApprovals?: number;
+}
+
+function NextRunCountdown({ nextRunAt }: { nextRunAt: string | null }) {
+  if (!nextRunAt) return null;
+  const diff = Math.max(0, new Date(nextRunAt).getTime() - Date.now());
+  if (diff === 0) return <span className="text-xs text-amber-500">now</span>;
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  let label = `${minutes % 60}m`;
+  if (hours > 0) label = `${hours % 24}h ${minutes % 60}m`;
+  if (days > 0) label = `${days}d ${hours % 24}h`;
+  return <span className="text-xs text-gray-400 dark:text-zinc-500">Next: {label}</span>;
 }
 
 export const Automations: React.FC = () => {
@@ -181,20 +195,38 @@ export const Automations: React.FC = () => {
               className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl p-4 flex items-center gap-4"
             >
               <div className="flex-1 min-w-0">
-                <Link
-                  to={`/automations/${a.id}`}
-                  className="font-medium text-gray-900 dark:text-zinc-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors truncate block"
-                >
-                  {a.name}
-                </Link>
+                <div className="flex items-center gap-2">
+                  <Link
+                    to={`/automations/${a.id}`}
+                    className="font-medium text-gray-900 dark:text-zinc-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors truncate"
+                  >
+                    {a.name}
+                  </Link>
+                  {(a.pendingApprovals ?? 0) > 0 && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                      ⏳ {a.pendingApprovals} pending
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-gray-400 dark:text-zinc-500 font-mono mt-0.5">{a.cronExpr}</p>
-                <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">
-                  Template: {a.templateId}
-                  {a.lastRunAt && ` · Last run: ${new Date(a.lastRunAt).toLocaleString()}`}
-                </p>
+                <div className="flex items-center gap-3 mt-0.5">
+                  <p className="text-xs text-gray-400 dark:text-zinc-500">
+                    Template: {a.templateId}
+                    {a.lastRunAt && ` · Last run: ${new Date(a.lastRunAt).toLocaleString()}`}
+                  </p>
+                  <NextRunCountdown nextRunAt={a.nextRunAt} />
+                </div>
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
+                {/* Run history */}
+                <Link
+                  to={`/automations/${a.id}`}
+                  className="px-2.5 py-1 rounded-lg text-xs border border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
+                >
+                  History
+                </Link>
+
                 {/* Toggle */}
                 <button
                   onClick={() => handleToggle(a.id, a.enabled)}

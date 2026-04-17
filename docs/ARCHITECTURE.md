@@ -391,14 +391,29 @@ Providers are selected by environment variables at runtime. No provider-specific
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `AI_TEXT_PROVIDER` | `mock` | LM for script/scene generation |
+| `AI_TEXT_PROVIDER` | `mock` | LM for script/scene generation (`openai`, `google-vertex`, `gemini`) |
 | `AI_TEXT_MODEL` | provider default | Model name for text provider |
-| `AI_IMAGE_PROVIDER` | `mock` | Image diffusion model |
+| `AI_IMAGE_PROVIDER` | `mock` | Image diffusion model (`openai`, `google-vertex`, `aws`) |
 | `AI_IMAGE_MODEL` | provider default | Model name for image provider |
-| `AI_AUDIO_PROVIDER` | `mock` | TTS audio provider |
+| `AI_AUDIO_PROVIDER` | `mock` | TTS audio provider (`openai`, `elevenlabs`) |
 | `AI_AUDIO_MODEL` | provider default | Model name for audio |
-| `AI_VIDEO_PROVIDER` | `mock` | Video generation model |
+| `AI_VIDEO_PROVIDER` | `mock` | Video generation model (`higgsfield`, `runway`, `luma`, `synthesia`, `aws`) |
 | `OPENAI_API_KEY` | — | Required for `openai` providers |
+| `HIGGSFIELD_API_KEY` | — | Required for `higgsfield` video provider |
+| `GOOGLE_VERTEX_PROJECT` | — | GCP project ID for `google-vertex` |
+| `GOOGLE_VERTEX_LOCATION` | — | GCP region for `google-vertex` |
+| `GEMINI_API_KEY` | — | Required for `gemini` text provider |
+| `RUNWAY_API_SECRET` | — | Required for `runway` video provider |
+| `LUMA_API_KEY` | — | Required for `luma` video provider |
+| `SYNTHESIA_API_KEY` | — | Required for `synthesia` talking-head video provider |
+| `AWS_ACCESS_KEY_ID` | — | Required for `aws` image + video providers |
+| `AWS_SECRET_ACCESS_KEY` | — | Required for `aws` providers |
+| `AWS_REGION` | — | AWS region for Bedrock + Nova Reel |
+| `ELEVENLABS_API_KEY` | — | Required for `elevenlabs` audio provider |
+
+### ProviderCapabilityMap
+
+`packages/shared-types/src/index.ts` exports `PROVIDER_CAPABILITY_MAP` — a static object that declares each provider's supported modalities, async/sync mode, and available models. This is consumed by UI components (e.g. provider selector dropdowns in `AutomationDetail`) without importing server-only code.
 
 ### Generation Job Lifecycle
 
@@ -411,6 +426,7 @@ queued → running → completed
 ```
 
 Each job records partial outputs as they are produced, enabling progress polling before completion.
+After generation completes, output files are automatically registered as `assets` in the asset store (image/audio/video modalities), so they appear in the Assets page without manual steps.
 
 ### Video Generation Modes
 
@@ -429,8 +445,128 @@ Each job records partial outputs as they are produced, enabling progress polling
 1. Create an adapter class implementing `TextProviderAdapter` (or image/audio/video) in `packages/ai-generation/src/providers/yourprovider.ts`
 2. Add it to the switch statement in `packages/ai-generation/src/providers/factory.ts`
 3. Export from `packages/ai-generation/src/providers/index.ts`
-4. Document the env variable in this file and in `docs/ARCHITECTURE.md`
-5. Add tests in `packages/ai-generation/src/__tests__/pipelines.test.ts`
+4. Add the new `PROVIDER_CAPABILITY_MAP` entry in `packages/shared-types/src/index.ts`
+5. Document the env variable in `.env.example` and this file
+6. Add tests in `packages/ai-generation/src/__tests__/providers.test.ts`
+
+---
+
+## Workflow Automation Model
+
+### Overview
+
+Automations support multi-step AI generation pipelines that run on a CRON schedule or on demand. Each automation has:
+
+- **N ordered workflow steps** (`workflow_steps` table): generate_text, generate_image, generate_audio, generate_video, render, approve, custom_code
+- **An approval policy** (`automation_approval_policies` table): none / auto / require_approval
+- **Per-run step execution records** (`automation_run_steps` table)
+
+### Workflow Step Types
+
+| Type | Description |
+|---|---|
+| `generate_text` | Run `runScriptPipeline` with a prompt template |
+| `generate_image` | Run `runImagePipeline` with scene descriptions from context |
+| `generate_audio` | Run `runAudioPipeline` with narration text from context |
+| `generate_video` | Run `runSceneClipsPipeline` with scene prompts from context |
+| `render` | Bind context to template slots and enqueue a render job |
+| `approve` | Inline approval gate — pauses execution until approved |
+| `custom_code` | JSON step definition stored for deferred advanced-runtime execution |
+
+### Approval Flow
+
+```
+Trigger (cron / manual / api)
+    │
+    ▼
+Load policy
+    │
+    ├─ mode = "none"/"auto"  ─────────────────► Execute steps immediately
+    │
+    └─ mode = "require_approval"
+           │
+           ▼
+       Create run (approval_status = "pending")
+       Notify approvers
+           │
+           ├─ Approve ──► resume step execution
+           └─ Reject  ──► cancel run
+           └─ Timeout ──► apply on_timeout policy (approve / reject / pause)
+```
+
+### Overlap Policy
+
+Each automation declares how to handle simultaneous triggers:
+
+| Policy | Behaviour |
+|---|---|
+| `skip` (default) | Ignore the trigger if a run is already active |
+| `queue` | Wait for the current run to finish before starting |
+| `cancel_running` | Cancel the in-progress run and start a new one |
+
+### Automation Workflow Builder UI
+
+The `AutomationDetail` page (`/automations/:id`) provides a no-code step builder:
+
+1. **Header** — name, enable/disable, Run Now, last-run badge
+2. **Trigger** — CRON picker, timezone selector, overlap policy
+3. **Workflow Steps** — drag-to-reorder step cards with provider/model/prompt/output-slot selectors; Advanced mode exposes JSON step definitions
+4. **Approval & Permissions** — mode picker, approver role, timeout configuration
+5. **Run History** — paginated run list with step-level status drill-down
+6. **Pending Approvals panel** — approve/reject buttons (shown to qualifying role)
+
+---
+
+## Slot-Aware Props Editor (SlotEditor)
+
+`apps/studio/src/components/SlotEditor.tsx` replaces `PropsForm` in the Editor page. It renders structured slot types derived from the template's Zod schema:
+
+| Slot kind | UI |
+|---|---|
+| `string` | Text input + "Generate with AI" mini-button (opens inline generation popover) |
+| `asset-image` | Thumbnail + "Pick image" button → `AssetPickerModal` |
+| `asset-video` | "Pick video" button → `AssetPickerModal` |
+| `asset-audio` | "Pick audio" button → `AssetPickerModal` |
+| `color` | Color swatch + hex input |
+| `enum` | Styled button group (≤5 options) or `<select>` |
+| `boolean` | Toggle switch |
+| `number` | Numeric input |
+| `object-array` | Accordion per item with typed sub-fields |
+
+`AssetPickerModal` (`apps/studio/src/components/AssetPickerModal.tsx`) provides three tabs:
+- **Browse** — filtered grid/list of existing assets from `/api/assets?type=<type>`
+- **Upload** — drag-and-drop or file-picker upload
+- **Generate** — prompts the AI generation API and returns the resulting URL
+
+---
+
+## Timeline Editor
+
+`apps/studio/src/components/TimelineEditor.tsx` provides a horizontal track-based view of `inputProps.scenes` (or equivalent array). It is a **view layer** — all changes write back to `inputProps` immediately and reflect in the live Remotion Player.
+
+### Track Types
+
+| Track | Source field | Interactions |
+|---|---|---|
+| Video | `inputProps.scenes` / `items` / `events` | Drag-to-reorder, resize right edge = change `durationFrames`, double-click = edit popover, right-click = context menu |
+| Narration | `inputProps.narrationUrl` | Shown as a non-resizable block spanning the full duration |
+| Music | `inputProps.backgroundMusicUrl` | Same as narration |
+
+### Block Interactions
+
+- **Drag** — reorders scenes array
+- **Resize** — changes `scene.durationFrames`; optionally snapped to nearest second
+- **Double-click** — opens `SceneEditPopover` for title / body / imageUrl / durationFrames
+- **Right-click** — context menu: Edit slot / Duplicate / Split / Delete
+- **Snap toggle** — snaps resize to frame-aligned second boundaries
+
+### Playhead
+
+The playhead is synced to the Remotion Player's `currentFrame` via a 100ms polling interval against `playerRef.getCurrentFrame()`.
+
+### Toggle
+
+The Timeline panel is toggled via a "Show / Hide timeline" button below the Player in the Desktop layout. Both Properties panel and Timeline remain available simultaneously.
 
 ### Updated Dependency Graph
 

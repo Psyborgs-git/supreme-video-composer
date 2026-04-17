@@ -54,6 +54,10 @@ import {
   addJobAsset,
   generateJobId,
   runFullGenerationPipeline,
+  runScriptPipeline,
+  runImagePipeline,
+  runAudioPipeline,
+  runSceneClipsPipeline,
 } from "@studio/ai-generation";
 
 // ─── New auth / org / billing / automation routes ─────────────────────────────
@@ -610,46 +614,149 @@ export function createApp(
       return c.json({ error: "prompt is required" }, 400);
     }
 
-    const modalityParse = GenerationModalitySchema.safeParse(body.modality);
+    const modalityParse = GenerationModalitySchema.safeParse(body.modality ?? "script");
     if (!modalityParse.success) {
       return c.json(
-        { error: `modality must be one of: script, image, audio, video` },
+        { error: "modality must be one of: script, image, audio, video" },
         400,
       );
     }
 
+    const modality = modalityParse.data;
     const id = generateJobId();
+    const inputs =
+      typeof body.inputs === "object" && body.inputs !== null
+        ? (body.inputs as Record<string, unknown>)
+        : {};
+
     const job = createJobRecord(id, {
-      name: typeof body.name === "string" && body.name.trim() ? body.name.trim() : `${modalityParse.data} generation`,
-      modality: modalityParse.data,
+      name:
+        typeof body.name === "string" && body.name.trim()
+          ? body.name.trim()
+          : `${modality} generation`,
+      modality,
       prompt: body.prompt.trim(),
-      inputs: typeof body.inputs === "object" && body.inputs !== null ? body.inputs as Record<string, unknown> : undefined,
+      inputs: Object.keys(inputs).length ? inputs : undefined,
       projectId: typeof body.projectId === "string" ? body.projectId : undefined,
     });
 
-    // Fire the pipeline asynchronously (non-blocking for the API response)
+    // Fire the pipeline asynchronously
     (async () => {
       try {
         updateJobStatus(id, "running", { progress: 0 });
+        const prompt = job.prompt;
 
-        const inputs = job.inputs ?? {};
-        const result = await runFullGenerationPipeline({
-          prompt: job.prompt,
-          sceneCount: typeof inputs.sceneCount === "number" ? inputs.sceneCount : 5,
-          style: typeof inputs.style === "string" ? inputs.style : undefined,
-          genre: typeof inputs.genre === "string" ? inputs.genre : undefined,
-          generateImages: job.modality === "image",
-          generateAudio: job.modality === "audio",
-        });
+        switch (modality) {
+          case "script": {
+            const result = await runScriptPipeline({
+              prompt,
+              sceneCount: typeof inputs.sceneCount === "number" ? inputs.sceneCount : 5,
+              style: typeof inputs.style === "string" ? inputs.style : undefined,
+              genre: typeof inputs.genre === "string" ? inputs.genre : undefined,
+            });
+            addJobOutput(id, "scenePlan", result);
+            break;
+          }
 
-        updateJobStatus(id, "running", { progress: 0.8 });
-        addJobOutput(id, "scenePlan", result.scenePlan);
+          case "image": {
+            const scenes = Array.isArray(inputs.scenes)
+              ? (inputs.scenes as { body: string; imagePrompt?: string }[])
+              : [{ body: prompt }];
+            const results = await runImagePipeline(scenes);
+            addJobOutput(id, "sceneImages", results);
+            // Auto-register generated images as assets
+            for (const r of results) {
+              if (r.imageUrl) {
+                const assetId = generateJobId();
+                try {
+                  registerExistingAsset(storageConfig.assetsDir, assetStore, {
+                    id: assetId,
+                    name: `Generated image ${assetId.slice(0, 8)}`,
+                    type: "image",
+                    path: r.imageUrl,
+                    mimeType: "image/png",
+                    sizeBytes: 0,
+                  });
+                  addJobAsset(id, assetId);
+                } catch (regErr) {
+                  console.warn(`[generation] image asset registration failed for job ${id}:`, regErr);
+                }
+              }
+            }
+            break;
+          }
 
-        if (result.sceneImages) {
-          addJobOutput(id, "sceneImages", result.sceneImages);
-        }
-        if (result.narrationAudio) {
-          addJobOutput(id, "narrationAudio", result.narrationAudio);
+          case "audio": {
+            const result = await runAudioPipeline({
+              text: typeof inputs.text === "string" ? inputs.text : prompt,
+              voiceId: typeof inputs.voiceId === "string" ? inputs.voiceId : undefined,
+              speed: typeof inputs.speed === "number" ? inputs.speed : undefined,
+              format: inputs.format === "wav" ? "wav" : "mp3",
+            });
+            addJobOutput(id, "narrationAudio", result);
+            // Auto-register as audio asset
+            if (result.url) {
+              const assetId = generateJobId();
+              try {
+                registerExistingAsset(storageConfig.assetsDir, assetStore, {
+                  id: assetId,
+                  name: `Generated audio ${assetId.slice(0, 8)}`,
+                  type: "audio",
+                  path: result.url,
+                  mimeType: result.mimeType,
+                  sizeBytes: 0,
+                });
+                addJobAsset(id, assetId);
+              } catch (regErr) {
+                console.warn(`[generation] audio asset registration failed for job ${id}:`, regErr);
+              }
+            }
+            break;
+          }
+
+          case "video": {
+            const scenes = Array.isArray(inputs.scenes)
+              ? (inputs.scenes as { prompt: string; imageUrl?: string }[])
+              : [{ prompt }];
+            const results = await runSceneClipsPipeline(scenes);
+            addJobOutput(id, "sceneClips", results);
+            // Auto-register generated video clips as assets
+            for (const r of results) {
+              if (r.url && !r.error) {
+                const assetId = generateJobId();
+                try {
+                  registerExistingAsset(storageConfig.assetsDir, assetStore, {
+                    id: assetId,
+                    name: `Generated video ${assetId.slice(0, 8)}`,
+                    type: "video",
+                    path: r.url,
+                    mimeType: r.mimeType,
+                    sizeBytes: 0,
+                  });
+                  addJobAsset(id, assetId);
+                } catch (regErr) {
+                  console.warn(`[generation] video asset registration failed for job ${id}:`, regErr);
+                }
+              }
+            }
+            break;
+          }
+
+          default: {
+            // "full" — runs the complete multi-step pipeline
+            const result = await runFullGenerationPipeline({
+              prompt,
+              sceneCount: typeof inputs.sceneCount === "number" ? inputs.sceneCount : 5,
+              style: typeof inputs.style === "string" ? inputs.style : undefined,
+              genre: typeof inputs.genre === "string" ? inputs.genre : undefined,
+              generateImages: true,
+              generateAudio: true,
+            });
+            addJobOutput(id, "scenePlan", result.scenePlan);
+            if (result.sceneImages) addJobOutput(id, "sceneImages", result.sceneImages);
+            if (result.narrationAudio) addJobOutput(id, "narrationAudio", result.narrationAudio);
+            break;
+          }
         }
 
         updateJobStatus(id, "completed", { progress: 1 });
