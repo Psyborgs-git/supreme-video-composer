@@ -372,11 +372,27 @@ export const GenerationStatusSchema = z.enum([
 export type GenerationStatus = z.infer<typeof GenerationStatusSchema>;
 
 /** Known text/script LM providers */
-export const TextProviderSchema = z.enum(["openai", "anthropic", "google", "ollama", "mock"]);
+export const TextProviderSchema = z.enum([
+  "openai",
+  "anthropic",
+  "google",
+  "google-vertex",
+  "gemini",
+  "ollama",
+  "mock",
+]);
 export type TextProvider = z.infer<typeof TextProviderSchema>;
 
 /** Known image generation providers */
-export const ImageProviderSchema = z.enum(["openai", "stability", "replicate", "fal", "mock"]);
+export const ImageProviderSchema = z.enum([
+  "openai",
+  "stability",
+  "replicate",
+  "fal",
+  "google-vertex",
+  "aws",
+  "mock",
+]);
 export type ImageProvider = z.infer<typeof ImageProviderSchema>;
 
 /** Known audio/TTS generation providers */
@@ -384,7 +400,16 @@ export const AudioProviderSchema = z.enum(["openai", "elevenlabs", "mock"]);
 export type AudioProvider = z.infer<typeof AudioProviderSchema>;
 
 /** Known video generation providers */
-export const VideoProviderSchema = z.enum(["runway", "replicate", "fal", "mock"]);
+export const VideoProviderSchema = z.enum([
+  "higgsfield",
+  "runway",
+  "luma",
+  "synthesia",
+  "aws",
+  "replicate",
+  "fal",
+  "mock",
+]);
 export type VideoProvider = z.infer<typeof VideoProviderSchema>;
 
 /** Provider + model selection for any modality */
@@ -397,6 +422,150 @@ export const ProviderConfigSchema = z.object({
   options: z.record(z.unknown()).optional(),
 });
 export type ProviderConfig = z.infer<typeof ProviderConfigSchema>;
+
+// ─── Provider Capability Map ──────────────────────────────────────
+
+/** Modalities a given provider supports */
+export type ProviderModality = "text" | "image" | "audio" | "video";
+
+export interface ProviderCapability {
+  /** Human-readable provider name */
+  label: string;
+  /** Supported modalities */
+  modalities: ProviderModality[];
+  /** Default model(s) keyed by modality */
+  defaultModels: Partial<Record<ProviderModality, string>>;
+  /** Available models keyed by modality */
+  availableModels: Partial<Record<ProviderModality, string[]>>;
+  /** Whether the provider call is asynchronous (polling-based) */
+  async: boolean;
+  /** Approximate credit cost multiplier relative to mock (1.0) */
+  creditMultiplier: number;
+  /** Optional docs URL */
+  docsUrl?: string;
+}
+
+/** Registry of all known providers and their capabilities.
+ *
+ * This is pure metadata — no server imports — safe for client bundles.
+ */
+export const PROVIDER_CAPABILITY_MAP: Record<string, ProviderCapability> = {
+  mock: {
+    label: "Mock (local test)",
+    modalities: ["text", "image", "audio", "video"],
+    defaultModels: {},
+    availableModels: {},
+    async: false,
+    creditMultiplier: 0,
+  },
+  openai: {
+    label: "OpenAI",
+    modalities: ["text", "image", "audio"],
+    defaultModels: { text: "gpt-4o-mini", image: "dall-e-3", audio: "tts-1" },
+    availableModels: {
+      text: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"],
+      image: ["dall-e-3", "dall-e-2"],
+      audio: ["tts-1", "tts-1-hd"],
+    },
+    async: false,
+    creditMultiplier: 1.0,
+    docsUrl: "https://platform.openai.com/docs",
+  },
+  "google-vertex": {
+    label: "Google Vertex AI",
+    modalities: ["text", "image"],
+    defaultModels: { text: "gemini-1.5-pro", image: "imagegeneration@006" },
+    availableModels: {
+      text: ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-2.0-flash"],
+      image: ["imagegeneration@006", "imagegeneration@005"],
+    },
+    async: false,
+    creditMultiplier: 1.1,
+    docsUrl: "https://cloud.google.com/vertex-ai/generative-ai/docs",
+  },
+  gemini: {
+    label: "Gemini API",
+    modalities: ["text"],
+    defaultModels: { text: "gemini-1.5-flash" },
+    availableModels: {
+      text: ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash"],
+    },
+    async: false,
+    creditMultiplier: 0.8,
+    docsUrl: "https://ai.google.dev",
+  },
+  elevenlabs: {
+    label: "ElevenLabs",
+    modalities: ["audio"],
+    defaultModels: { audio: "eleven_multilingual_v2" },
+    availableModels: {
+      audio: [
+        "eleven_multilingual_v2",
+        "eleven_monolingual_v1",
+        "eleven_turbo_v2",
+      ],
+    },
+    async: false,
+    creditMultiplier: 1.2,
+    docsUrl: "https://elevenlabs.io/docs",
+  },
+  higgsfield: {
+    label: "Higgsfield AI",
+    modalities: ["video"],
+    defaultModels: { video: "default" },
+    availableModels: { video: ["default"] },
+    async: true,
+    creditMultiplier: 3.0,
+    docsUrl: "https://docs.higgsfield.ai",
+  },
+  runway: {
+    label: "Runway ML",
+    modalities: ["video"],
+    defaultModels: { video: "gen3a_turbo" },
+    availableModels: { video: ["gen3a_turbo", "gen3a"] },
+    async: true,
+    creditMultiplier: 3.5,
+    docsUrl: "https://docs.runwayml.com",
+  },
+  luma: {
+    label: "Luma AI (Dream Machine)",
+    modalities: ["video"],
+    defaultModels: { video: "dream-machine" },
+    availableModels: { video: ["dream-machine"] },
+    async: true,
+    creditMultiplier: 3.0,
+    docsUrl: "https://docs.lumalabs.ai",
+  },
+  synthesia: {
+    label: "Synthesia",
+    modalities: ["video"],
+    defaultModels: { video: "default" },
+    availableModels: { video: ["default"] },
+    async: true,
+    creditMultiplier: 5.0,
+    docsUrl: "https://docs.synthesia.io",
+  },
+  aws: {
+    label: "AWS (Bedrock)",
+    modalities: ["image", "video"],
+    defaultModels: {
+      image: "amazon.titan-image-generator-v2:0",
+      video: "amazon.nova-reel-v1:0",
+    },
+    availableModels: {
+      image: [
+        "amazon.titan-image-generator-v2:0",
+        "amazon.titan-image-generator-v1",
+        "stability.stable-diffusion-xl-v1",
+      ],
+      video: ["amazon.nova-reel-v1:0"],
+    },
+    async: true,
+    creditMultiplier: 2.0,
+    docsUrl: "https://docs.aws.amazon.com/bedrock",
+  },
+} as const;
+
 
 /** Provenance metadata stored alongside every AI-generated asset */
 export const GenerationProvenanceSchema = z.object({
