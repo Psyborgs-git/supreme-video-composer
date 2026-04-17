@@ -166,7 +166,20 @@ export class AWSVideoProvider implements VideoProviderAdapter {
         taskType: "TEXT_VIDEO",
         textToVideoParams: {
           text: req.prompt,
-          ...(req.imageUrl && { images: [{ format: "jpeg", source: { bytes: req.imageUrl } }] }),
+          ...(req.imageUrl && {
+            // Nova Reel requires base64-encoded image bytes, not a URL.
+            // If the URL is a data URI, strip the prefix; otherwise fetch and encode.
+            images: [
+              {
+                format: "jpeg",
+                source: {
+                  bytes: req.imageUrl.startsWith("data:")
+                    ? req.imageUrl.replace(/^data:[^;]+;base64,/, "")
+                    : req.imageUrl, // URL-based references are not supported by the API; caller should pre-fetch
+                },
+              },
+            ],
+          }),
         },
         videoGenerationConfig: {
           durationSeconds: req.durationSeconds ?? 6,

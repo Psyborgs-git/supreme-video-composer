@@ -459,15 +459,20 @@ export const SlotEditor: React.FC<SlotEditorProps> = ({ schema, values, onChange
             />
           )}
           {slot.kind === "unknown" && (
-            <textarea
-              rows={2}
-              value={typeof values[slot.key] === "string" ? (values[slot.key] as string) : JSON.stringify(values[slot.key] ?? "")}
-              onChange={(e) => {
-                try { onChange(slot.key, JSON.parse(e.target.value)); }
-                catch { onChange(slot.key, e.target.value); }
-              }}
-              className="w-full px-3 py-2 text-xs font-mono rounded-lg border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <div>
+              <textarea
+                rows={2}
+                value={typeof values[slot.key] === "string" ? (values[slot.key] as string) : JSON.stringify(values[slot.key] ?? "")}
+                onChange={(e) => {
+                  try { onChange(slot.key, JSON.parse(e.target.value)); }
+                  catch { onChange(slot.key, e.target.value); }
+                }}
+                className="w-full px-3 py-2 text-xs font-mono rounded-lg border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-[10px] text-gray-400 dark:text-zinc-500 mt-1">
+                This field accepts a JSON value. Enter a plain string or a valid JSON object / array.
+              </p>
+            </div>
           )}
         </div>
       ))}

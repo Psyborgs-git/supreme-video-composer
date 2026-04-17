@@ -678,8 +678,8 @@ export function createApp(
                     sizeBytes: 0,
                   });
                   addJobAsset(id, assetId);
-                } catch {
-                  // asset registration is best-effort
+                } catch (regErr) {
+                  console.warn(`[generation] image asset registration failed for job ${id}:`, regErr);
                 }
               }
             }
@@ -707,8 +707,8 @@ export function createApp(
                   sizeBytes: 0,
                 });
                 addJobAsset(id, assetId);
-              } catch {
-                // best-effort
+              } catch (regErr) {
+                console.warn(`[generation] audio asset registration failed for job ${id}:`, regErr);
               }
             }
             break;
@@ -734,8 +734,8 @@ export function createApp(
                     sizeBytes: 0,
                   });
                   addJobAsset(id, assetId);
-                } catch {
-                  // best-effort
+                } catch (regErr) {
+                  console.warn(`[generation] video asset registration failed for job ${id}:`, regErr);
                 }
               }
             }

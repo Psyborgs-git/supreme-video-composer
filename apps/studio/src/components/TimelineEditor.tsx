@@ -142,8 +142,8 @@ function SceneBlock({
         e.preventDefault();
         onContextMenu(index, e.clientX, e.clientY);
       }}
-      style={{ width: widthPx, minWidth: 30 }}
-      className={`relative h-[${TRACK_HEIGHT}px] flex-shrink-0 rounded-lg mr-1 cursor-pointer select-none flex flex-col justify-center px-2 ${color} ${isSelected ? "ring-2 ring-white/80" : ""}`}
+      style={{ width: widthPx, minWidth: 30, height: TRACK_HEIGHT }}
+      className={`relative flex-shrink-0 rounded-lg mr-1 cursor-pointer select-none flex flex-col justify-center px-2 ${color} ${isSelected ? "ring-2 ring-white/80" : ""}`}
     >
       <p className="text-white text-xs font-medium truncate leading-tight">
         {scene.title ?? `Scene ${index + 1}`}
