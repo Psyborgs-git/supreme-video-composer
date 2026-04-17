@@ -4,7 +4,7 @@ import { Player } from "@remotion/player";
 import type { PlayerRef } from "@remotion/player";
 import { getTemplate } from "@studio/template-registry";
 import { useEditorStore } from "@/stores/editorStore";
-import { PropsForm } from "@/components/PropsForm";
+import { SlotEditor } from "@/components/SlotEditor";
 import { AspectRatioSelector } from "@/components/AspectRatioSelector";
 import { ExportPanel } from "@/components/ExportPanel";
 import { AiGenerationPanel } from "@/components/AiGenerationPanel";
@@ -258,7 +258,7 @@ export const Editor: React.FC = () => {
                 {/* Props Form */}
                 <div className="p-4">
                   <h3 className="text-sm font-medium text-gray-700 dark:text-zinc-300 mb-3">Properties</h3>
-                  <PropsForm
+                  <SlotEditor
                     schema={template.manifest.propsSchema}
                     values={inputProps}
                     onChange={updateInputProp}
