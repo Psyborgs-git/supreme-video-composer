@@ -134,6 +134,10 @@ export const automations = sqliteTable("automations", {
   enabled: integer("enabled").default(1),
   lastRunAt: text("last_run_at"),
   nextRunAt: text("next_run_at"),
+  // workflow extensions
+  workflowVersion: integer("workflow_version").default(1),
+  timezone: text("timezone").default("UTC"),
+  overlapPolicy: text("overlap_policy").default("skip"), // "skip" | "queue" | "cancel_running"
   createdAt: text("created_at").default(sql`(datetime('now'))`),
   updatedAt: text("updated_at").default(sql`(datetime('now'))`),
 });
@@ -145,6 +149,59 @@ export const automationRuns = sqliteTable("automation_runs", {
   outputUrl: text("output_url"),
   error: text("error"),
   ranAt: text("ran_at"),
+  creditsUsed: integer("credits_used").default(0),
+  // workflow run extensions
+  triggeredBy: text("triggered_by").default("cron"), // "cron" | "manual" | "api"
+  approvalStatus: text("approval_status").default("none"), // "none" | "pending" | "approved" | "rejected"
+  approvedBy: text("approved_by").references(() => users.id),
+  approvedAt: text("approved_at"),
+  context: text("context").default("{}"), // JSON: slot values and generated outputs
+});
+
+// ─── Workflow steps ────────────────────────────────────────────────────────────
+
+export const workflowSteps = sqliteTable("workflow_steps", {
+  id: text("id").primaryKey(),
+  automationId: text("automation_id").references(() => automations.id),
+  order: integer("order").notNull().default(0),
+  type: text("type").notNull(), // "generate_text"|"generate_image"|"generate_audio"|"generate_video"|"render"|"approve"|"custom_code"
+  provider: text("provider"),
+  model: text("model"),
+  promptTemplate: text("prompt_template"), // supports {{slot_key}} interpolation
+  inputSlotBindings: text("input_slot_bindings").default("{}"), // JSON mapping
+  outputSlotKey: text("output_slot_key"),
+  conditionExpr: text("condition_expr"), // optional skip/gate expression (stored, not eval'd)
+  advancedCode: text("advanced_code"), // JSON step definition for advanced mode
+  createdAt: text("created_at").default(sql`(datetime('now'))`),
+});
+
+// ─── Approval policies ─────────────────────────────────────────────────────────
+
+export const automationApprovalPolicies = sqliteTable("automation_approval_policies", {
+  id: text("id").primaryKey(),
+  automationId: text("automation_id")
+    .notNull()
+    .references(() => automations.id),
+  mode: text("mode").notNull().default("none"), // "none" | "auto" | "require_approval"
+  approverRole: text("approver_role").default("admin"), // "owner"|"admin"|"member"
+  approverUserIds: text("approver_user_ids").default("[]"), // JSON string[] for specific-user mode
+  timeoutMinutes: integer("timeout_minutes").default(60),
+  onTimeout: text("on_timeout").default("pause"), // "approve" | "reject" | "pause"
+  createdAt: text("created_at").default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").default(sql`(datetime('now'))`),
+});
+
+// ─── Automation run steps ─────────────────────────────────────────────────────
+
+export const automationRunSteps = sqliteTable("automation_run_steps", {
+  id: text("id").primaryKey(),
+  runId: text("run_id").references(() => automationRuns.id),
+  stepId: text("step_id").references(() => workflowSteps.id),
+  status: text("status").notNull().default("pending"), // "pending"|"running"|"complete"|"error"|"skipped"
+  startedAt: text("started_at"),
+  completedAt: text("completed_at"),
+  outputs: text("outputs").default("{}"), // JSON: generated URLs, text, etc.
+  error: text("error"),
   creditsUsed: integer("credits_used").default(0),
 });
 
@@ -245,10 +302,28 @@ export const automationsRelations = relations(automations, ({ one, many }) => ({
   org: one(organizations, { fields: [automations.orgId], references: [organizations.id] }),
   createdByUser: one(users, { fields: [automations.createdBy], references: [users.id] }),
   runs: many(automationRuns),
+  steps: many(workflowSteps),
+  approvalPolicy: many(automationApprovalPolicies),
 }));
 
-export const automationRunsRelations = relations(automationRuns, ({ one }) => ({
+export const automationRunsRelations = relations(automationRuns, ({ one, many }) => ({
   automation: one(automations, { fields: [automationRuns.automationId], references: [automations.id] }),
+  approver: one(users, { fields: [automationRuns.approvedBy], references: [users.id] }),
+  runSteps: many(automationRunSteps),
+}));
+
+export const workflowStepsRelations = relations(workflowSteps, ({ one, many }) => ({
+  automation: one(automations, { fields: [workflowSteps.automationId], references: [automations.id] }),
+  runSteps: many(automationRunSteps),
+}));
+
+export const automationApprovalPoliciesRelations = relations(automationApprovalPolicies, ({ one }) => ({
+  automation: one(automations, { fields: [automationApprovalPolicies.automationId], references: [automations.id] }),
+}));
+
+export const automationRunStepsRelations = relations(automationRunSteps, ({ one }) => ({
+  run: one(automationRuns, { fields: [automationRunSteps.runId], references: [automationRuns.id] }),
+  step: one(workflowSteps, { fields: [automationRunSteps.stepId], references: [workflowSteps.id] }),
 }));
 
 export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({

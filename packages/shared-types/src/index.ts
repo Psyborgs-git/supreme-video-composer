@@ -777,6 +777,10 @@ export interface Automation {
   enabled: boolean;
   lastRunAt: string | null;
   nextRunAt: string | null;
+  // workflow extensions
+  workflowVersion: number;
+  timezone: string;
+  overlapPolicy: "skip" | "queue" | "cancel_running";
   createdAt: string;
   updatedAt: string;
 }
@@ -789,6 +793,9 @@ export const AutomationRunStatusSchema = z.enum([
 ]);
 export type AutomationRunStatus = z.infer<typeof AutomationRunStatusSchema>;
 
+export const ApprovalStatusSchema = z.enum(["none", "pending", "approved", "rejected"]);
+export type ApprovalStatus = z.infer<typeof ApprovalStatusSchema>;
+
 export interface AutomationRun {
   id: string;
   automationId: string;
@@ -797,4 +804,81 @@ export interface AutomationRun {
   error: string | null;
   ranAt: string | null;
   creditsUsed: number;
+  triggeredBy: "cron" | "manual" | "api";
+  approvalStatus: ApprovalStatus;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  context: Record<string, unknown>;
 }
+
+// ─── Workflow steps ────────────────────────────────────────────────
+
+export const WorkflowStepTypeSchema = z.enum([
+  "generate_text",
+  "generate_image",
+  "generate_audio",
+  "generate_video",
+  "render",
+  "approve",
+  "custom_code",
+]);
+export type WorkflowStepType = z.infer<typeof WorkflowStepTypeSchema>;
+
+export const WorkflowStepSchema = z.object({
+  id: z.string(),
+  automationId: z.string(),
+  order: z.number().int().min(0),
+  type: WorkflowStepTypeSchema,
+  provider: z.string().optional(),
+  model: z.string().optional(),
+  promptTemplate: z.string().optional(),
+  inputSlotBindings: z.record(z.unknown()).default({}),
+  outputSlotKey: z.string().optional(),
+  conditionExpr: z.string().optional(),
+  advancedCode: z.string().optional(),
+  createdAt: z.string(),
+});
+export type WorkflowStep = z.infer<typeof WorkflowStepSchema>;
+
+// ─── Approval policies ────────────────────────────────────────────
+
+export const ApprovalPolicyModeSchema = z.enum(["none", "auto", "require_approval"]);
+export type ApprovalPolicyMode = z.infer<typeof ApprovalPolicyModeSchema>;
+
+export const ApprovalPolicySchema = z.object({
+  id: z.string(),
+  automationId: z.string(),
+  mode: ApprovalPolicyModeSchema,
+  approverRole: z.enum(["owner", "admin", "member"]).default("admin"),
+  approverUserIds: z.array(z.string()).default([]),
+  timeoutMinutes: z.number().int().min(0).default(60),
+  onTimeout: z.enum(["approve", "reject", "pause"]).default("pause"),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type ApprovalPolicy = z.infer<typeof ApprovalPolicySchema>;
+
+// ─── Automation run steps ─────────────────────────────────────────
+
+export const RunStepStatusSchema = z.enum([
+  "pending",
+  "running",
+  "complete",
+  "error",
+  "skipped",
+]);
+export type RunStepStatus = z.infer<typeof RunStepStatusSchema>;
+
+export const AutomationRunStepSchema = z.object({
+  id: z.string(),
+  runId: z.string(),
+  stepId: z.string(),
+  status: RunStepStatusSchema,
+  startedAt: z.string().nullable(),
+  completedAt: z.string().nullable(),
+  outputs: z.record(z.unknown()).default({}),
+  error: z.string().nullable(),
+  creditsUsed: z.number().default(0),
+});
+export type AutomationRunStep = z.infer<typeof AutomationRunStepSchema>;
+

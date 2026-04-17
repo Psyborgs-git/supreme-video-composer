@@ -515,6 +515,8 @@ export async function deleteAutomation(id: string) {
 export async function createAutomationRun(data: {
   automationId: string;
   status?: string;
+  triggeredBy?: string;
+  context?: Record<string, unknown>;
 }) {
   const [run] = await getDb()
     .insert(schema.automationRuns)
@@ -522,6 +524,8 @@ export async function createAutomationRun(data: {
       id: randomUUID(),
       automationId: data.automationId,
       status: data.status ?? "pending",
+      triggeredBy: data.triggeredBy ?? "cron",
+      context: JSON.stringify(data.context ?? {}),
     })
     .returning();
   return run;
@@ -535,6 +539,10 @@ export async function updateAutomationRun(
     error: string;
     ranAt: string;
     creditsUsed: number;
+    approvalStatus: string;
+    approvedBy: string;
+    approvedAt: string;
+    context: Record<string, unknown>;
   }>,
 ) {
   const [updated] = await getDb()
@@ -545,6 +553,10 @@ export async function updateAutomationRun(
       ...(data.error !== undefined && { error: data.error }),
       ...(data.ranAt !== undefined && { ranAt: data.ranAt }),
       ...(data.creditsUsed !== undefined && { creditsUsed: data.creditsUsed }),
+      ...(data.approvalStatus !== undefined && { approvalStatus: data.approvalStatus }),
+      ...(data.approvedBy !== undefined && { approvedBy: data.approvedBy }),
+      ...(data.approvedAt !== undefined && { approvedAt: data.approvedAt }),
+      ...(data.context !== undefined && { context: JSON.stringify(data.context) }),
     })
     .where(eq(schema.automationRuns.id, id))
     .returning();
@@ -557,4 +569,198 @@ export async function getAutomationRuns(automationId: string, limit?: number) {
     orderBy: desc(schema.automationRuns.ranAt),
     ...(limit !== undefined && { limit }),
   });
+}
+
+export async function getAutomationRunById(id: string) {
+  return getDb().query.automationRuns.findFirst({
+    where: eq(schema.automationRuns.id, id),
+    with: { runSteps: true },
+  });
+}
+
+export async function getPendingApprovalRuns(automationId: string) {
+  return getDb().query.automationRuns.findMany({
+    where: and(
+      eq(schema.automationRuns.automationId, automationId),
+      eq(schema.automationRuns.approvalStatus, "pending"),
+    ),
+    orderBy: desc(schema.automationRuns.ranAt),
+  });
+}
+
+// ─── Workflow steps ────────────────────────────────────────────────────────────
+
+export async function getWorkflowSteps(automationId: string) {
+  return getDb().query.workflowSteps.findMany({
+    where: eq(schema.workflowSteps.automationId, automationId),
+    orderBy: schema.workflowSteps.order,
+  });
+}
+
+export async function createWorkflowStep(data: {
+  automationId: string;
+  order: number;
+  type: string;
+  provider?: string;
+  model?: string;
+  promptTemplate?: string;
+  inputSlotBindings?: Record<string, unknown>;
+  outputSlotKey?: string;
+  conditionExpr?: string;
+  advancedCode?: string;
+}) {
+  const [step] = await getDb()
+    .insert(schema.workflowSteps)
+    .values({
+      id: randomUUID(),
+      automationId: data.automationId,
+      order: data.order,
+      type: data.type,
+      provider: data.provider,
+      model: data.model,
+      promptTemplate: data.promptTemplate,
+      inputSlotBindings: JSON.stringify(data.inputSlotBindings ?? {}),
+      outputSlotKey: data.outputSlotKey,
+      conditionExpr: data.conditionExpr,
+      advancedCode: data.advancedCode,
+    })
+    .returning();
+  return step;
+}
+
+export async function updateWorkflowStep(
+  id: string,
+  data: Partial<{
+    order: number;
+    type: string;
+    provider: string;
+    model: string;
+    promptTemplate: string;
+    inputSlotBindings: Record<string, unknown>;
+    outputSlotKey: string;
+    conditionExpr: string;
+    advancedCode: string;
+  }>,
+) {
+  const [updated] = await getDb()
+    .update(schema.workflowSteps)
+    .set({
+      ...(data.order !== undefined && { order: data.order }),
+      ...(data.type !== undefined && { type: data.type }),
+      ...(data.provider !== undefined && { provider: data.provider }),
+      ...(data.model !== undefined && { model: data.model }),
+      ...(data.promptTemplate !== undefined && { promptTemplate: data.promptTemplate }),
+      ...(data.inputSlotBindings !== undefined && {
+        inputSlotBindings: JSON.stringify(data.inputSlotBindings),
+      }),
+      ...(data.outputSlotKey !== undefined && { outputSlotKey: data.outputSlotKey }),
+      ...(data.conditionExpr !== undefined && { conditionExpr: data.conditionExpr }),
+      ...(data.advancedCode !== undefined && { advancedCode: data.advancedCode }),
+    })
+    .where(eq(schema.workflowSteps.id, id))
+    .returning();
+  return updated;
+}
+
+export async function deleteWorkflowStep(id: string) {
+  return getDb().delete(schema.workflowSteps).where(eq(schema.workflowSteps.id, id));
+}
+
+export async function reorderWorkflowSteps(automationId: string, orderedIds: string[]) {
+  const db = getDb();
+  for (let i = 0; i < orderedIds.length; i++) {
+    await db
+      .update(schema.workflowSteps)
+      .set({ order: i })
+      .where(
+        and(
+          eq(schema.workflowSteps.id, orderedIds[i]),
+          eq(schema.workflowSteps.automationId, automationId),
+        ),
+      );
+  }
+}
+
+// ─── Approval policies ─────────────────────────────────────────────────────────
+
+export async function getApprovalPolicy(automationId: string) {
+  return getDb().query.automationApprovalPolicies.findFirst({
+    where: eq(schema.automationApprovalPolicies.automationId, automationId),
+  });
+}
+
+export async function upsertApprovalPolicy(data: {
+  automationId: string;
+  mode: string;
+  approverRole?: string;
+  approverUserIds?: string[];
+  timeoutMinutes?: number;
+  onTimeout?: string;
+}) {
+  const existing = await getApprovalPolicy(data.automationId);
+  const values = {
+    mode: data.mode,
+    approverRole: data.approverRole ?? "admin",
+    approverUserIds: JSON.stringify(data.approverUserIds ?? []),
+    timeoutMinutes: data.timeoutMinutes ?? 60,
+    onTimeout: data.onTimeout ?? "pause",
+    updatedAt: new Date().toISOString(),
+  };
+  if (existing) {
+    const [updated] = await getDb()
+      .update(schema.automationApprovalPolicies)
+      .set(values)
+      .where(eq(schema.automationApprovalPolicies.automationId, data.automationId))
+      .returning();
+    return updated;
+  }
+  const [created] = await getDb()
+    .insert(schema.automationApprovalPolicies)
+    .values({ id: randomUUID(), automationId: data.automationId, ...values })
+    .returning();
+  return created;
+}
+
+// ─── Automation run steps ─────────────────────────────────────────────────────
+
+export async function createAutomationRunStep(data: {
+  runId: string;
+  stepId: string;
+}) {
+  const [runStep] = await getDb()
+    .insert(schema.automationRunSteps)
+    .values({
+      id: randomUUID(),
+      runId: data.runId,
+      stepId: data.stepId,
+      status: "pending",
+    })
+    .returning();
+  return runStep;
+}
+
+export async function updateAutomationRunStep(
+  id: string,
+  data: Partial<{
+    status: string;
+    startedAt: string;
+    completedAt: string;
+    outputs: Record<string, unknown>;
+    error: string;
+    creditsUsed: number;
+  }>,
+) {
+  const [updated] = await getDb()
+    .update(schema.automationRunSteps)
+    .set({
+      ...(data.status !== undefined && { status: data.status }),
+      ...(data.startedAt !== undefined && { startedAt: data.startedAt }),
+      ...(data.completedAt !== undefined && { completedAt: data.completedAt }),
+      ...(data.outputs !== undefined && { outputs: JSON.stringify(data.outputs) }),
+      ...(data.error !== undefined && { error: data.error }),
+      ...(data.creditsUsed !== undefined && { creditsUsed: data.creditsUsed }),
+    })
+    .where(eq(schema.automationRunSteps.id, id))
+    .returning();
+  return updated;
 }
