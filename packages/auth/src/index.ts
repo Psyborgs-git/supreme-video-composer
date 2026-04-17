@@ -1,3 +1,5 @@
+/// <reference path="./bcryptjs.d.ts" />
+
 export { authRouter } from "./oauth";
 export {
   requireAuth,

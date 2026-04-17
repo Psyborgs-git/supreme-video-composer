@@ -11,24 +11,27 @@ COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
 
 ENV BUN_INSTALL=/root/.bun
 
-# ─── Stage 2: Dependencies ───────────────────────────────────────
-FROM toolchain AS deps
+# ─── Stage 2a: Studio dependencies ───────────────────────────────
+FROM toolchain AS studio-deps
 
 WORKDIR /app
 
-# Copy only package manifests first (layer caching)
+# Copy only Studio manifests first (layer caching)
 COPY package.json bun.lock ./
 COPY apps/studio/package.json apps/studio/
-COPY apps/mcp-server/package.json apps/mcp-server/
 COPY packages/shared-types/package.json packages/shared-types/
+COPY packages/ai-generation/package.json packages/ai-generation/
+COPY packages/auth/package.json packages/auth/
+COPY packages/database/package.json packages/database/
+COPY packages/billing/package.json packages/billing/
 COPY packages/remotion-compositions/package.json packages/remotion-compositions/
 COPY packages/template-registry/package.json packages/template-registry/
 COPY packages/renderer/package.json packages/renderer/
 
-RUN bun install --ignore-scripts
+RUN bun install --ignore-scripts --no-save --filter @studio/app
 
-# ─── Stage 3: Builder ────────────────────────────────────────────
-FROM deps AS builder
+# ─── Stage 2b: Studio builder ────────────────────────────────────
+FROM studio-deps AS studio-builder
 
 WORKDIR /app
 
@@ -39,6 +42,56 @@ COPY tsconfig.base.json ./
 COPY packages/shared-types/ packages/shared-types/
 RUN cd packages/shared-types && bun run build
 
+COPY packages/database/ packages/database/
+RUN cd packages/database && bun run type-check
+
+COPY packages/auth/ packages/auth/
+RUN cd packages/auth && bun run type-check
+
+COPY packages/billing/ packages/billing/
+RUN cd packages/billing && bun run type-check
+
+COPY packages/ai-generation/ packages/ai-generation/
+RUN cd packages/ai-generation && bun run build
+
+COPY packages/renderer/ packages/renderer/
+RUN cd packages/renderer && bun run build
+
+COPY packages/template-registry/ packages/template-registry/
+COPY packages/remotion-compositions/ packages/remotion-compositions/
+
+COPY apps/studio/ apps/studio/
+RUN cd apps/studio && bun run build
+
+# ─── Stage 2c: MCP dependencies ──────────────────────────────────
+FROM toolchain AS mcp-deps
+
+WORKDIR /app
+
+# Copy only MCP manifests first (layer caching)
+COPY package.json bun.lock ./
+COPY apps/mcp-server/package.json apps/mcp-server/
+COPY packages/shared-types/package.json packages/shared-types/
+COPY packages/ai-generation/package.json packages/ai-generation/
+COPY packages/remotion-compositions/package.json packages/remotion-compositions/
+COPY packages/template-registry/package.json packages/template-registry/
+COPY packages/renderer/package.json packages/renderer/
+
+RUN bun install --ignore-scripts --no-save --filter @studio/mcp-server
+
+# ─── Stage 2d: MCP builder ───────────────────────────────────────
+FROM mcp-deps AS mcp-builder
+
+WORKDIR /app
+
+COPY tsconfig.base.json ./
+
+COPY packages/shared-types/ packages/shared-types/
+RUN cd packages/shared-types && bun run build
+
+COPY packages/ai-generation/ packages/ai-generation/
+RUN cd packages/ai-generation && bun run build
+
 COPY packages/renderer/ packages/renderer/
 RUN cd packages/renderer && bun run build
 
@@ -47,9 +100,6 @@ COPY packages/remotion-compositions/ packages/remotion-compositions/
 
 COPY apps/mcp-server/ apps/mcp-server/
 RUN cd apps/mcp-server && bun run build
-
-COPY apps/studio/ apps/studio/
-RUN cd apps/studio && bun run build
 
 # ─── Stage 4: Runtime base ───────────────────────────────────────
 FROM node:22-bookworm-slim AS runtime-base
@@ -90,11 +140,11 @@ ENV REMOTION_CHROME_EXECUTABLE=/usr/bin/chromium
 ENV CHROME_PATH=/usr/bin/chromium
 ENV PORT=3000
 
-COPY --from=deps --chown=studio:studio /app/node_modules ./node_modules
-COPY --from=builder --chown=studio:studio /app/package.json ./
-COPY --from=builder --chown=studio:studio /app/tsconfig.base.json ./
-COPY --from=builder --chown=studio:studio /app/packages/ ./packages/
-COPY --from=builder --chown=studio:studio /app/apps/ ./apps/
+COPY --from=studio-deps --chown=studio:studio /app/node_modules ./node_modules
+COPY --from=studio-builder --chown=studio:studio /app/package.json ./
+COPY --from=studio-builder --chown=studio:studio /app/tsconfig.base.json ./
+COPY --from=studio-builder --chown=studio:studio /app/packages/ ./packages/
+COPY --from=studio-builder --chown=studio:studio /app/apps/studio/ ./apps/studio/
 
 RUN mkdir -p /data/assets /data/projects /data/exports \
     && chown -R studio:studio /data /home/studio
@@ -110,11 +160,11 @@ FROM runtime-base AS mcp-runner
 ENV MCP_HOST=0.0.0.0
 ENV MCP_PORT=9090
 
-COPY --from=deps --chown=studio:studio /app/node_modules ./node_modules
-COPY --from=builder --chown=studio:studio /app/package.json ./
-COPY --from=builder --chown=studio:studio /app/tsconfig.base.json ./
-COPY --from=builder --chown=studio:studio /app/packages/ ./packages/
-COPY --from=builder --chown=studio:studio /app/apps/ ./apps/
+COPY --from=mcp-deps --chown=studio:studio /app/node_modules ./node_modules
+COPY --from=mcp-builder --chown=studio:studio /app/package.json ./
+COPY --from=mcp-builder --chown=studio:studio /app/tsconfig.base.json ./
+COPY --from=mcp-builder --chown=studio:studio /app/packages/ ./packages/
+COPY --from=mcp-builder --chown=studio:studio /app/apps/mcp-server/ ./apps/mcp-server/
 
 RUN mkdir -p /data/assets /data/projects /data/exports \
     && chown -R studio:studio /data /home/studio

@@ -8,6 +8,7 @@
         "zod": "^3.23.0",
       },
       "devDependencies": {
+        "bun-types": "^1.3.12",
         "typescript": "^5.5.0",
       },
     },
@@ -56,12 +57,14 @@
         "@studio/renderer": "*",
         "@studio/shared-types": "*",
         "@studio/template-registry": "*",
+        "drizzle-orm": "^0.45.2",
         "hono": "^4.6.0",
         "node-cron": "^4.2.1",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
         "react-router-dom": "^7.0.0",
         "remotion": "^4.0.0",
+        "stripe": "^22.0.1",
         "zod": "^3.23.0",
         "zustand": "^5.0.0",
       },
@@ -73,6 +76,7 @@
         "@types/react-dom": "^19.0.0",
         "@vitejs/plugin-react": "^4.3.0",
         "autoprefixer": "^10.4.0",
+        "bun-types": "^1.3.12",
         "postcss": "^8.4.0",
         "tailwindcss": "^4.0.0",
         "typescript": "^5.5.0",
@@ -105,6 +109,7 @@
       },
       "devDependencies": {
         "@types/node": "^25.5.2",
+        "bun-types": "^1.3.12",
         "typescript": "^5.5.0",
       },
     },
@@ -118,6 +123,7 @@
       },
       "devDependencies": {
         "@types/node": "^25.5.2",
+        "bun-types": "^1.3.12",
         "typescript": "^5.5.0",
       },
     },
@@ -125,13 +131,12 @@
       "name": "@studio/database",
       "version": "0.1.0",
       "dependencies": {
-        "better-sqlite3": "^12.8.0",
         "drizzle-orm": "^0.45.2",
         "zod": "^3.23.0",
       },
       "devDependencies": {
-        "@types/better-sqlite3": "^7.6.13",
         "@types/node": "^25.5.2",
+        "bun-types": "^1.3.12",
         "drizzle-kit": "^0.31.10",
         "typescript": "^5.5.0",
       },
@@ -668,6 +673,8 @@
     "buffer-crc32": ["buffer-crc32@0.2.13", "", {}, "sha512-VO9Ht/+p3SN7SKWqcrgEzjGbRSJYTx+Q1pTQC0wrWqHx0vpJraQ6GtHx8tvcg1rlK1byhU5gccxgOgj7B0TDkQ=="],
 
     "buffer-from": ["buffer-from@1.1.2", "", {}, "sha512-E+XQCRwSbaaiChtv6k6Dwgc+bx+Bs6vuKJHHl5kox/BaKbhiXzqQOwK4cO22yElGp2OCmjwVhT3HmxgyPGnJfQ=="],
+
+    "bun-types": ["bun-types@1.3.12", "", { "dependencies": { "@types/node": "*" } }, "sha512-HqOLj5PoFajAQciOMRiIZGNoKxDJSr6qigAttOX40vJuSp6DN/CxWp9s3C1Xwm4oH7ybueITwiaOcWXoYVoRkA=="],
 
     "bytes": ["bytes@3.1.2", "", {}, "sha512-/Nf7TyzTx6S3yRJObOAV7956r8cr2+Oj8AC5dt8wSP3BQAoeX58NoHyCU8P8zGkNXStjTSi6fzO6F0pBdcYbEg=="],
 

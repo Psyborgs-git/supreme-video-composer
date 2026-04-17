@@ -78,15 +78,16 @@ const { app } = createApp(renderQueue, corsOrigin, {
 
 // ─── Database & Scheduler ─────────────────────────────────────────────────────
 
-// Initialize DB (creates tables if needed via migrations or push)
-if (process.env.DATABASE_URL) {
-  try {
-    const { getDb } = await import("@studio/database");
-    getDb(); // Trigger lazy initialization
-    console.log("[studio-api] database connected");
-  } catch (err) {
-    console.error("[studio-api] database connection failed:", err);
-  }
+// Initialize the database and apply migrations before any routes or scheduled
+// jobs touch SQLite.
+try {
+  const { migrateDatabase, getDb } = await import("@studio/database");
+  migrateDatabase();
+  getDb(); // Trigger lazy initialization after migrations are applied.
+  console.log("[studio-api] database connected");
+} catch (err) {
+  console.error("[studio-api] database initialization failed:", err);
+  throw err;
 }
 
 // Wire render queue into scheduler and load saved automations
@@ -211,4 +212,3 @@ function gracefulShutdown(signal: string) {
 
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
-

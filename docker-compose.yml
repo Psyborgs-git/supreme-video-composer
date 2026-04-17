@@ -8,32 +8,13 @@ x-data-volumes: &data-volumes
   - ./data/exports:/data/exports
 
 services:
-  postgres:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: studio
-      POSTGRES_USER: studio
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-studio_dev}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "${HOST_POSTGRES_PORT:-5432}:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U studio -d studio"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
+ 
   studio:
     build:
       <<: *build
       target: studio-runner
     image: remotion-studio-studio:local
     init: true
-    depends_on:
-      postgres:
-        condition: service_healthy
     ports:
       - "${HOST_STUDIO_PORT:-3000}:3000"
     volumes: *data-volumes
@@ -43,8 +24,9 @@ services:
       - ASSETS_DIR=/data/assets
       - PROJECTS_DIR=/data/projects
       - EXPORTS_DIR=/data/exports
-      # Database
-      - DATABASE_URL=postgresql://studio:${POSTGRES_PASSWORD:-studio_dev}@postgres:5432/studio
+      # Database - persisted SQLite file on the host via the bind mount above.
+      # NOTE: the current database package uses better-sqlite3/sqlite-core, not Postgres.
+      - DATABASE_URL=${DOCKER_DATABASE_URL:-file:/data/projects/studio.db}
       # Auth
       - SESSION_SECRET=${SESSION_SECRET:-change-me-in-production-32chars}
       - APP_URL=${APP_URL:-http://localhost:3000}
@@ -96,5 +78,3 @@ services:
       start_period: 10s
     restart: unless-stopped
 
-volumes:
-  postgres_data:

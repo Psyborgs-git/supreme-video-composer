@@ -4,7 +4,7 @@
     "outDir": "./dist",
     "rootDir": ".",
     "noEmit": true,
-    "types": ["node"],
+    "types": ["node", "bun-types"],
     "paths": {
       "@/*": ["./src/*"]
     }

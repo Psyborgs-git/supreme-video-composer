@@ -7,16 +7,19 @@
   ],
   "scripts": {
     "dev": "npm run --workspace @studio/app dev",
-    "dev:all": "npm run build:types && npm run --workspace @studio/shared-types dev & npm run --workspace @studio/renderer dev & npm run --workspace @studio/app dev & wait",
+    "dev:all": "bun run build:types && bun run dev:shared-types & bun run dev:renderer & bun run dev:app & wait",
     "dev:mcp": "npm run --workspace @studio/mcp-server dev",
     "mcp:http": "npm run --workspace @studio/mcp-server start:http",
     "mcp:stdio": "npm run --workspace @studio/mcp-server start:stdio",
     "smoke:mcp:http": "npm run --workspace @studio/mcp-server smoke:http",
-    "build": "npm run --workspace @studio/shared-types build && npm run --workspace @studio/database build && npm run --workspace @studio/auth build && npm run --workspace @studio/billing build && npm run --workspace @studio/renderer build && npm run --workspace @studio/mcp-server build && npm run --workspace @studio/app build",
-    "build:types": "npm run --workspace @studio/shared-types build",
-    "build:renderer": "npm run --workspace @studio/renderer build",
-    "build:mcp": "npm run --workspace @studio/mcp-server build",
-    "build:app": "npm run --workspace @studio/app build",
+    "build": "cd packages/shared-types && bun run build && cd ../../packages/database && bun run type-check && cd ../../packages/auth && bun run type-check && cd ../../packages/billing && bun run type-check && cd ../../packages/renderer && bun run build && cd ../../apps/mcp-server && bun run build && cd ../../apps/studio && bun run build",
+    "build:types": "cd packages/shared-types && bun run build",
+    "build:renderer": "cd packages/renderer && bun run build",
+    "build:mcp": "cd apps/mcp-server && bun run build",
+    "build:app": "cd apps/studio && bun run build",
+    "dev:shared-types": "cd packages/shared-types && bun run dev 2>/dev/null || true",
+    "dev:renderer": "cd packages/renderer && bun run dev 2>/dev/null || true",
+    "dev:app": "cd apps/studio && bun run dev",
     "test": "npm run test --workspaces --if-present",
     "test:types": "npm run --workspace @studio/shared-types test",
     "test:registry": "npm run --workspace @studio/template-registry test",
@@ -28,6 +31,7 @@
     "type-check": "npm run type-check --workspaces --if-present"
   },
   "devDependencies": {
+    "bun-types": "^1.3.12",
     "typescript": "^5.5.0"
   },
   "overrides": {

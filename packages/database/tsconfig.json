@@ -3,7 +3,7 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "types": ["node", "better-sqlite3"]
+    "types": ["node", "bun-types"]
   },
   "include": ["src"]
 }
