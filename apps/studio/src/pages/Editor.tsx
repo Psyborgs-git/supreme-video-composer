@@ -8,6 +8,7 @@ import { SlotEditor } from "@/components/SlotEditor";
 import { AspectRatioSelector } from "@/components/AspectRatioSelector";
 import { ExportPanel } from "@/components/ExportPanel";
 import { AiGenerationPanel } from "@/components/AiGenerationPanel";
+import { TimelineEditor } from "@/components/TimelineEditor";
 import { ASPECT_RATIO_PRESETS } from "@studio/shared-types";
 import type { AspectRatioPreset } from "@studio/shared-types";
 
@@ -70,6 +71,7 @@ export const Editor: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"properties" | "export">("properties");
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const [timelineOpen, setTimelineOpen] = useState(false);
 
   const {
     inputProps,
@@ -282,38 +284,59 @@ export const Editor: React.FC = () => {
         <AiGenerationPanel onClose={() => setAiPanelOpen(false)} />
       )}
       {/* Desktop layout: side-by-side */}
-      <div className="hidden lg:flex h-[calc(100vh-57px)]">
-        {/* Left: Preview */}
-        <div className="flex-1 flex flex-col items-center justify-center bg-gray-50 dark:bg-zinc-950 p-6 overflow-auto transition-colors">
-          <div className="mb-4 text-sm text-gray-400 dark:text-zinc-500">
-            {previewWidth} × {previewHeight} · {aspectRatioLabel}
+      <div className="hidden lg:flex flex-col h-[calc(100vh-57px)]">
+        <div className="flex flex-1 min-h-0">
+          {/* Left: Preview */}
+          <div className="flex-1 flex flex-col items-center justify-center bg-gray-50 dark:bg-zinc-950 p-6 overflow-auto transition-colors">
+            <div className="mb-4 text-sm text-gray-400 dark:text-zinc-500">
+              {previewWidth} × {previewHeight} · {aspectRatioLabel}
+            </div>
+
+            <Player
+              ref={playerRef}
+              component={template.component}
+              durationInFrames={previewDuration}
+              fps={previewFps}
+              compositionWidth={previewWidth}
+              compositionHeight={previewHeight}
+              inputProps={inputProps}
+              controls
+              loop
+              style={{
+                width: playerWidth,
+                height: playerHeight,
+                borderRadius: 8,
+                overflow: "hidden",
+                boxShadow: "0 0 40px rgba(0,0,0,0.15)",
+              }}
+              acknowledgeRemotionLicense
+            />
+
+            {/* Timeline toggle */}
+            <button
+              onClick={() => setTimelineOpen((o) => !o)}
+              className="mt-4 flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-gray-300 dark:border-zinc-700 text-gray-500 dark:text-zinc-500 hover:border-blue-400 hover:text-blue-600 dark:hover:border-blue-500 dark:hover:text-blue-400 transition-colors"
+            >
+              ⬛ {timelineOpen ? "Hide timeline" : "Show timeline"}
+            </button>
           </div>
 
-          <Player
-            ref={playerRef}
-            component={template.component}
-            durationInFrames={previewDuration}
-            fps={previewFps}
-            compositionWidth={previewWidth}
-            compositionHeight={previewHeight}
-            inputProps={inputProps}
-            controls
-            loop
-            style={{
-              width: playerWidth,
-              height: playerHeight,
-              borderRadius: 8,
-              overflow: "hidden",
-              boxShadow: "0 0 40px rgba(0,0,0,0.15)",
-            }}
-            acknowledgeRemotionLicense
-          />
+          {/* Right: Controls sidebar */}
+          <aside className="w-96 border-l border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-y-auto flex flex-col transition-colors">
+            {sidebarContent}
+          </aside>
         </div>
 
-        {/* Right: Controls sidebar */}
-        <aside className="w-96 border-l border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-y-auto flex flex-col transition-colors">
-          {sidebarContent}
-        </aside>
+        {/* Timeline panel (collapsible) */}
+        {timelineOpen && (
+          <TimelineEditor
+            inputProps={inputProps}
+            onChange={updateInputProp}
+            playerRef={playerRef}
+            fps={previewFps}
+            totalDurationInFrames={previewDuration}
+          />
+        )}
       </div>
 
       {/* Mobile layout: stacked */}
