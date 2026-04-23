@@ -16,7 +16,7 @@
     "start:http": "bun src/index.ts --transport=http",
     "start:stdio": "bun src/index.ts --transport=stdio",
     "smoke:http": "bun scripts/smoke-http.ts",
-    "test": "vitest run src/__tests__/runtime.test.ts src/__tests__/tools.test.ts src/__tests__/transport.test.ts",
+    "test": "vitest run src/__tests__/runtime.test.ts src/__tests__/tools.test.ts src/__tests__/transport.test.ts src/__tests__/studio-api-client.test.ts",
     "test:e2e": "vitest run src/__tests__/process-e2e.test.ts --pool=forks",
     "type-check": "tsc --noEmit"
   },

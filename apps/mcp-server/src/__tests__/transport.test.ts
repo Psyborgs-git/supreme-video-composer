@@ -125,6 +125,46 @@ describe("MCP server transports", () => {
 
     expect(summary).toContain("Merged with previous project.");
     expect(secondProject.compileError).toBeUndefined();
+
+    const activeSessionId =
+      (transport as unknown as { sessionId?: string }).sessionId ??
+      Array.from(mcp.sessions.keys())[0];
+    expect(activeSessionId).toBeTruthy();
+    expect(mcp.sessions.size).toBe(1);
+
+    const deleteResponse = await fetch(`${mcp.url}/mcp`, {
+      method: "DELETE",
+      headers: {
+        "mcp-session-id": String(activeSessionId),
+      },
+    });
+
+    expect(deleteResponse.ok).toBe(true);
+    expect(mcp.sessions.size).toBe(0);
+  });
+
+  it("returns 400 JSON-RPC error for malformed JSON bodies", async () => {
+    const mcp = await startHttpMcpServer(
+      {
+        previewBaseUrl: "http://localhost:3000",
+      },
+      { host: "127.0.0.1", port: 0 },
+    );
+    cleanupStack.push(mcp);
+
+    const response = await fetch(`${mcp.url}/mcp`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: "{not-json",
+    });
+
+    expect(response.status).toBe(400);
+    const payload = (await response.json()) as {
+      error?: { message?: string };
+    };
+    expect(payload.error?.message).toContain("Invalid JSON body");
   });
 });
 

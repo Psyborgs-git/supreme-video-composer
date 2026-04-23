@@ -3,7 +3,7 @@
 # the final runtime still has full Node compatibility available if needed.
 FROM oven/bun:1.3.11 AS bun
 
-FROM node:22-bookworm-slim AS toolchain
+FROM node:22-bookworm AS toolchain
 
 WORKDIR /app
 
@@ -102,16 +102,11 @@ COPY apps/mcp-server/ apps/mcp-server/
 RUN cd apps/mcp-server && bun run build
 
 # ─── Stage 4: Runtime base ───────────────────────────────────────
-FROM node:22-bookworm-slim AS runtime-base
+FROM node:22-bookworm AS runtime-base
 
 WORKDIR /app
 
 COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
 RUN groupadd --system studio && useradd --system --create-home --gid studio studio
@@ -126,7 +121,11 @@ ENV HOME=/home/studio
 FROM runtime-base AS studio-runner
 
 # System dependencies required for Remotion rendering.
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN find /etc/apt -type f \( -name '*.list' -o -name '*.sources' \) -exec \
+            sed -i 's|http://deb.debian.org|https://deb.debian.org|g; s|http://security.debian.org|https://security.debian.org|g' {} + \
+        && printf 'Acquire::Retries "5";\nAcquire::http::No-Cache "true";\nAcquire::https::No-Cache "true";\n' > /etc/apt/apt.conf.d/99-network-hardening \
+        && rm -rf /var/lib/apt/lists/* \
+    && apt-get update && apt-get install -y --no-install-recommends \
     chromium \
     ffmpeg \
     fonts-noto-color-emoji \

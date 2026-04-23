@@ -102,6 +102,7 @@ export function createAudioProvider(override?: ProviderConfig): AudioProviderAda
 
 export function createVideoProvider(override?: ProviderConfig): VideoProviderAdapter {
   const name = (override?.provider ?? envStr("AI_VIDEO_PROVIDER", "mock")).toLowerCase();
+  const model = override?.model ?? envStr("AI_VIDEO_MODEL");
 
   switch (name) {
     case "higgsfield":

@@ -49,11 +49,13 @@ export class StudioApiError extends Error {
 export class StudioApiClient {
   private readonly baseUrl: string;
   private readonly apiToken?: string;
+  private readonly timeoutMs: number;
 
   constructor(baseUrl: string, apiToken?: string) {
     this.baseUrl = baseUrl.replace(/\/+$/, "");
     // Support STUDIO_API_TOKEN env var for m2m access
     this.apiToken = apiToken ?? process.env.STUDIO_API_TOKEN;
+    this.timeoutMs = resolveTimeoutMs(process.env.STUDIO_API_TIMEOUT_MS);
   }
 
   async createProject(input: CreateProjectInput): Promise<Project> {
@@ -171,10 +173,26 @@ export class StudioApiClient {
       ...(this.apiToken ? { "X-Api-Token": this.apiToken } : {}),
     };
 
-    const response = await fetch(`${this.baseUrl}${path}`, {
-      ...init,
-      headers: { ...headers, ...(init.headers as Record<string, string> | undefined) },
-    });
+    const timeoutSignal = AbortSignal.timeout(this.timeoutMs);
+    const signal = init.signal
+      ? AbortSignal.any([init.signal, timeoutSignal])
+      : timeoutSignal;
+
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}${path}`, {
+        ...init,
+        signal,
+        headers: { ...headers, ...(init.headers as Record<string, string> | undefined) },
+      });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "TimeoutError") {
+        throw new StudioApiError(504, {
+          error: `Studio API request timed out after ${this.timeoutMs}ms`,
+        });
+      }
+      throw error;
+    }
 
     const text = await response.text();
     const body = text ? safeJsonParse(text) : null;
@@ -185,6 +203,15 @@ export class StudioApiClient {
 
     return body as T;
   }
+}
+
+function resolveTimeoutMs(raw: string | undefined): number {
+  const fallbackMs = 15000;
+  if (!raw) return fallbackMs;
+
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallbackMs;
+  return parsed;
 }
 
 function safeJsonParse(text: string): unknown {

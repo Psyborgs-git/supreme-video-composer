@@ -32,6 +32,16 @@ import type { Automation, WorkflowStep } from "@studio/shared-types";
 import { createProviderAdapters } from "@studio/ai-generation";
 import { generateId } from "../utils";
 
+const WORKFLOW_STEP_TYPES: WorkflowStep["type"][] = [
+  "generate_text",
+  "generate_image",
+  "generate_audio",
+  "generate_video",
+  "render",
+  "approve",
+  "custom_code",
+];
+
 type RenderQueueLike = {
   enqueue(job: unknown): Promise<unknown>;
 };
@@ -60,10 +70,16 @@ class AutomationScheduler {
   async loadFromDb() {
     try {
       const allOrgs = await getAllEnabledAutomations();
+      let loaded = 0;
       for (const a of allOrgs) {
-        this.register(a);
+        try {
+          this.register(a);
+          loaded++;
+        } catch (err) {
+          console.error(`[scheduler] skipping automation ${a.id} — failed to register:`, err);
+        }
       }
-      console.log(`[scheduler] loaded ${allOrgs.length} automation(s)`);
+      console.log(`[scheduler] loaded ${loaded}/${allOrgs.length} automation(s)`);
     } catch (err) {
       console.error("[scheduler] failed to load automations from DB:", err);
     }
@@ -242,7 +258,8 @@ class AutomationScheduler {
 
     try {
       // ── Load workflow steps ───────────────────────────────────────────────
-      const steps = await getWorkflowSteps(automation.id);
+      const rawSteps = await getWorkflowSteps(automation.id);
+      const steps = rawSteps.map((step) => toWorkflowStep(step, automation.id));
       let context = { ...automation.inputProps };
 
       if (steps.length > 0) {
@@ -474,11 +491,22 @@ function toAutomation(row: {
     lastRunAt: row.lastRunAt,
     nextRunAt: row.nextRunAt,
     workflowVersion: row.workflowVersion ?? 1,
-    timezone: row.timezone ?? "UTC",
+    timezone: safeTimezone(row.timezone),
     overlapPolicy: (row.overlapPolicy as Automation["overlapPolicy"]) ?? "skip",
     createdAt: row.createdAt ?? new Date().toISOString(),
     updatedAt: row.updatedAt ?? new Date().toISOString(),
   };
+}
+
+/** Validate an IANA timezone string, falling back to "UTC" for any invalid value. */
+function safeTimezone(tz: string | null | undefined): string {
+  if (!tz) return "UTC";
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: tz });
+    return tz;
+  } catch {
+    return "UTC";
+  }
 }
 
 function safeJson(value: string | null): Record<string, unknown> {
@@ -496,6 +524,40 @@ function interpolate(template: string, context: Record<string, unknown>): string
     const val = context[key];
     return val !== undefined && val !== null ? String(val) : `{{${key}}}`;
   });
+}
+
+function toWorkflowStep(row: {
+  id: string;
+  automationId: string | null;
+  order: number | null;
+  type: string;
+  provider: string | null;
+  model: string | null;
+  promptTemplate: string | null;
+  inputSlotBindings: string | null;
+  outputSlotKey: string | null;
+  conditionExpr: string | null;
+  advancedCode: string | null;
+  createdAt: string | null;
+}, fallbackAutomationId: string): WorkflowStep {
+  const parsedType = WORKFLOW_STEP_TYPES.includes(row.type as WorkflowStep["type"])
+    ? (row.type as WorkflowStep["type"])
+    : "custom_code";
+
+  return {
+    id: row.id,
+    automationId: row.automationId ?? fallbackAutomationId,
+    order: row.order ?? 0,
+    type: parsedType,
+    ...(row.provider ? { provider: row.provider } : {}),
+    ...(row.model ? { model: row.model } : {}),
+    ...(row.promptTemplate ? { promptTemplate: row.promptTemplate } : {}),
+    inputSlotBindings: safeJson(row.inputSlotBindings),
+    ...(row.outputSlotKey ? { outputSlotKey: row.outputSlotKey } : {}),
+    ...(row.conditionExpr ? { conditionExpr: row.conditionExpr } : {}),
+    ...(row.advancedCode ? { advancedCode: row.advancedCode } : {}),
+    createdAt: row.createdAt ?? new Date().toISOString(),
+  };
 }
 
 export { toAutomation };

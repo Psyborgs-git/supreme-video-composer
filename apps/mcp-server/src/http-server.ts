@@ -97,7 +97,15 @@ async function handleRequest(
     return;
   }
 
-  const parsedBody = req.method === "POST" ? await readJsonBody(req) : undefined;
+  let parsedBody: unknown;
+  if (req.method === "POST") {
+    try {
+      parsedBody = await readJsonBody(req);
+    } catch {
+      writeJsonRpcError(res, 400, "Bad Request: Invalid JSON body");
+      return;
+    }
+  }
   const sessionId = getHeader(req, "mcp-session-id");
 
   let session = sessionId ? sessions.get(sessionId) : undefined;
@@ -130,7 +138,15 @@ async function handleRequest(
   await session.transport.handleRequest(req, res, parsedBody);
 
   if (req.method === "DELETE") {
-    await session.server.close();
+    try {
+      await session.transport.close();
+    } finally {
+      await session.server.close();
+      const activeSessionId = session.transport.sessionId ?? sessionId;
+      if (activeSessionId) {
+        sessions.delete(activeSessionId);
+      }
+    }
   }
 }
 
